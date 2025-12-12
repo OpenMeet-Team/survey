@@ -272,8 +272,8 @@ func (h *Handlers) SubmitResponse(c echo.Context) error {
 		})
 	}
 
-	// Record metrics
-	telemetry.SurveyResponsesTotal.WithLabelValues(slug, "web").Inc()
+	// Record metrics (no slug label to avoid cardinality explosion)
+	telemetry.SurveyResponsesTotal.WithLabelValues("web").Inc()
 
 	// Return success
 	return c.JSON(http.StatusCreated, ResponseSubmittedResponse{
@@ -578,8 +578,8 @@ func (h *Handlers) SubmitResponseHTML(c echo.Context) error {
 		return component.Render(c.Request().Context(), c.Response().Writer)
 	}
 
-	// Record metrics
-	telemetry.SurveyResponsesTotal.WithLabelValues(slug, "web").Inc()
+	// Record metrics (no slug label to avoid cardinality explosion)
+	telemetry.SurveyResponsesTotal.WithLabelValues("web").Inc()
 
 	// Return thank you message
 	component := templates.ThankYou(slug)

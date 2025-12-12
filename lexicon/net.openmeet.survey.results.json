@@ -1,0 +1,71 @@
+{
+  "lexicon": 1,
+  "id": "net.openmeet.survey.results",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Finalized, anonymized results for a completed survey. Published by the survey author after endsAt.",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["subject", "totalVotes", "questionResults", "finalizedAt"],
+        "properties": {
+          "subject": {
+            "type": "ref",
+            "ref": "com.atproto.repo.strongRef",
+            "description": "Reference to the survey these results are for."
+          },
+          "totalVotes": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Total number of unique voters."
+          },
+          "questionResults": {
+            "type": "array",
+            "items": { "type": "ref", "ref": "#questionResult" },
+            "description": "Aggregated results per question."
+          },
+          "finalizedAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "When the results were finalized."
+          }
+        }
+      }
+    },
+    "questionResult": {
+      "type": "object",
+      "required": ["questionId"],
+      "properties": {
+        "questionId": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "optionCounts": {
+          "type": "array",
+          "items": { "type": "ref", "ref": "#optionCount" },
+          "description": "Vote counts per option for choice questions."
+        },
+        "textResponseCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of text responses (actual text not stored for privacy)."
+        }
+      }
+    },
+    "optionCount": {
+      "type": "object",
+      "required": ["optionId", "count"],
+      "properties": {
+        "optionId": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

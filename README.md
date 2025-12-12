@@ -15,7 +15,7 @@ A standalone survey/polling service with ATProto integration.
 ## Architecture
 
 - **survey-api**: Web server with HTML (Templ) and JSON API endpoints
-- **survey-consumer**: Jetstream consumer for ATProto votes (future)
+- **survey-consumer**: Jetstream consumer that indexes ATProto surveys, responses, and results
 
 ## Tech Stack
 
@@ -54,14 +54,32 @@ export DATABASE_NAME=survey
 export PORT=8080
 ```
 
-### Running
+### Running the API Server
 
 ```bash
-# Run the API server
 go run ./cmd/api
-
 # Server starts on http://localhost:8080
 ```
+
+### Running the Jetstream Consumer
+
+The consumer indexes ATProto records from the Bluesky network:
+
+```bash
+go run ./cmd/consumer
+# Connects to wss://jetstream2.us-east.bsky.network
+```
+
+**Collections indexed:**
+- `net.openmeet.survey` - Survey definitions from any PDS
+- `net.openmeet.survey.response` - User votes
+- `net.openmeet.survey.results` - Finalized results (anonymized aggregates)
+
+**Features:**
+- Cursor-based resumption (survives restarts)
+- Exponential backoff reconnection (1s → 60s)
+- Authorization checks (only owners can update/delete)
+- Atomic message + cursor updates (no duplicates)
 
 ### Endpoints
 
@@ -162,11 +180,16 @@ E2E tests are tagged with `//go:build e2e` so they don't run with regular unit t
 survey/
 ├── cmd/
 │   ├── api/              # survey-api entrypoint
-│   └── consumer/         # survey-consumer entrypoint (stub)
+│   └── consumer/         # survey-consumer entrypoint
 ├── internal/
 │   ├── api/              # HTTP handlers, router, middleware
 │   │   ├── handlers_test.go     # Unit tests (mocks)
 │   │   └── e2e_test.go          # E2E tests (real DB)
+│   ├── consumer/         # Jetstream consumer
+│   │   ├── jetstream.go         # WebSocket client
+│   │   ├── processor.go         # Message routing & CRUD
+│   │   ├── cursor.go            # Cursor persistence
+│   │   └── atproto.go           # Record parsing
 │   ├── db/               # Database access and migrations
 │   ├── telemetry/        # Metrics setup
 │   ├── models/           # Domain models
@@ -198,10 +221,18 @@ The deployment includes:
 
 ## ATProto Lexicons
 
-- `net.openmeet.survey`: Survey/poll definition record
-- `net.openmeet.survey.response`: User response record
+- `net.openmeet.survey` - Survey/poll definition record
+- `net.openmeet.survey.response` - User response (vote) record
+- `net.openmeet.survey.results` - Finalized, anonymized results (published by survey author after voting ends)
 
 See `lexicon/` directory for full schemas.
+
+### Privacy Design
+
+After a survey's `endsAt` time passes:
+1. Survey author aggregates and publishes `net.openmeet.survey.results` to their PDS
+2. Voters can then delete their individual `response` records from their own PDS
+3. Anonymized vote counts persist on the author's PDS
 
 ## License
 

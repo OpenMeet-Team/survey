@@ -11,14 +11,26 @@ import (
 	"github.com/openmeet-team/survey/internal/models"
 )
 
+// Querier interface represents a database connection or transaction
+type Querier interface {
+	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
+	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
+	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+}
+
 // Queries provides database query methods
 type Queries struct {
-	db *sql.DB
+	db Querier
 }
 
 // NewQueries creates a new Queries instance
-func NewQueries(db *sql.DB) *Queries {
+func NewQueries(db Querier) *Queries {
 	return &Queries{db: db}
+}
+
+// GetDB returns the underlying database connection
+func (q *Queries) GetDB() Querier {
+	return q.db
 }
 
 // Survey Queries
@@ -60,10 +72,53 @@ func (q *Queries) CreateSurvey(ctx context.Context, s *models.Survey) error {
 	return nil
 }
 
+// GetSurveyByURI retrieves a survey by its ATProto URI
+func (q *Queries) GetSurveyByURI(ctx context.Context, uri string) (*models.Survey, error) {
+	query := `
+		SELECT id, uri, cid, author_did, slug, title, description, definition, starts_at, ends_at, results_uri, results_cid, created_at, updated_at
+		FROM surveys
+		WHERE uri = $1
+	`
+
+	survey := &models.Survey{}
+	var defJSON []byte
+
+	err := q.db.QueryRowContext(ctx, query, uri).Scan(
+		&survey.ID,
+		&survey.URI,
+		&survey.CID,
+		&survey.AuthorDID,
+		&survey.Slug,
+		&survey.Title,
+		&survey.Description,
+		&defJSON,
+		&survey.StartsAt,
+		&survey.EndsAt,
+		&survey.ResultsURI,
+		&survey.ResultsCID,
+		&survey.CreatedAt,
+		&survey.UpdatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("survey not found: %w", err)
+		}
+		return nil, fmt.Errorf("failed to query survey: %w", err)
+	}
+
+	// Unmarshal JSONB definition
+	if err := json.Unmarshal(defJSON, &survey.Definition); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal survey definition: %w", err)
+	}
+
+	return survey, nil
+}
+
 // GetSurveyBySlug retrieves a survey by its slug
 func (q *Queries) GetSurveyBySlug(ctx context.Context, slug string) (*models.Survey, error) {
 	query := `
-		SELECT id, uri, cid, author_did, slug, title, description, definition, starts_at, ends_at, created_at, updated_at
+		SELECT id, uri, cid, author_did, slug, title, description, definition, starts_at, ends_at, results_uri, results_cid, created_at, updated_at
 		FROM surveys
 		WHERE slug = $1
 	`
@@ -82,6 +137,8 @@ func (q *Queries) GetSurveyBySlug(ctx context.Context, slug string) (*models.Sur
 		&defJSON,
 		&survey.StartsAt,
 		&survey.EndsAt,
+		&survey.ResultsURI,
+		&survey.ResultsCID,
 		&survey.CreatedAt,
 		&survey.UpdatedAt,
 	)
@@ -104,7 +161,7 @@ func (q *Queries) GetSurveyBySlug(ctx context.Context, slug string) (*models.Sur
 // GetSurveyByID retrieves a survey by its ID
 func (q *Queries) GetSurveyByID(ctx context.Context, id uuid.UUID) (*models.Survey, error) {
 	query := `
-		SELECT id, uri, cid, author_did, slug, title, description, definition, starts_at, ends_at, created_at, updated_at
+		SELECT id, uri, cid, author_did, slug, title, description, definition, starts_at, ends_at, results_uri, results_cid, created_at, updated_at
 		FROM surveys
 		WHERE id = $1
 	`
@@ -123,6 +180,8 @@ func (q *Queries) GetSurveyByID(ctx context.Context, id uuid.UUID) (*models.Surv
 		&defJSON,
 		&survey.StartsAt,
 		&survey.EndsAt,
+		&survey.ResultsURI,
+		&survey.ResultsCID,
 		&survey.CreatedAt,
 		&survey.UpdatedAt,
 	)
@@ -145,7 +204,7 @@ func (q *Queries) GetSurveyByID(ctx context.Context, id uuid.UUID) (*models.Surv
 // ListSurveys retrieves surveys with pagination
 func (q *Queries) ListSurveys(ctx context.Context, limit, offset int) ([]*models.Survey, error) {
 	query := `
-		SELECT id, uri, cid, author_did, slug, title, description, definition, starts_at, ends_at, created_at, updated_at
+		SELECT id, uri, cid, author_did, slug, title, description, definition, starts_at, ends_at, results_uri, results_cid, created_at, updated_at
 		FROM surveys
 		ORDER BY created_at DESC
 		LIMIT $1 OFFSET $2
@@ -173,6 +232,8 @@ func (q *Queries) ListSurveys(ctx context.Context, limit, offset int) ([]*models
 			&defJSON,
 			&survey.StartsAt,
 			&survey.EndsAt,
+			&survey.ResultsURI,
+			&survey.ResultsCID,
 			&survey.CreatedAt,
 			&survey.UpdatedAt,
 		)
@@ -441,6 +502,117 @@ func (q *Queries) CountResponsesBySurvey(ctx context.Context, surveyID uuid.UUID
 	return count, nil
 }
 
+// GetResponseByRecordURI retrieves a response by its ATProto record URI
+func (q *Queries) GetResponseByRecordURI(ctx context.Context, recordURI string) (*models.Response, error) {
+	query := `
+		SELECT id, survey_id, voter_did, voter_session, record_uri, record_cid, answers, created_at
+		FROM responses
+		WHERE record_uri = $1
+	`
+
+	response := &models.Response{}
+	var answersJSON []byte
+
+	err := q.db.QueryRowContext(ctx, query, recordURI).Scan(
+		&response.ID,
+		&response.SurveyID,
+		&response.VoterDID,
+		&response.VoterSession,
+		&response.RecordURI,
+		&response.RecordCID,
+		&answersJSON,
+		&response.CreatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil // Not found is not an error for this query
+		}
+		return nil, fmt.Errorf("failed to query response: %w", err)
+	}
+
+	// Unmarshal JSONB answers
+	if err := json.Unmarshal(answersJSON, &response.Answers); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response answers: %w", err)
+	}
+
+	return response, nil
+}
+
+// UpdateResponseAnswers updates the answers for an existing response
+func (q *Queries) UpdateResponseAnswers(ctx context.Context, id uuid.UUID, answers map[string]models.Answer, cid string) error {
+	answersJSON, err := json.Marshal(answers)
+	if err != nil {
+		return fmt.Errorf("failed to marshal answers: %w", err)
+	}
+
+	query := `
+		UPDATE responses
+		SET answers = $2, record_cid = $3
+		WHERE id = $1
+	`
+
+	result, err := q.db.ExecContext(ctx, query, id, answersJSON, cid)
+	if err != nil {
+		return fmt.Errorf("failed to update response: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rows == 0 {
+		return fmt.Errorf("response not found")
+	}
+
+	return nil
+}
+
+// DeleteResponseByRecordURI deletes a response by its ATProto record URI
+func (q *Queries) DeleteResponseByRecordURI(ctx context.Context, recordURI string) error {
+	query := `DELETE FROM responses WHERE record_uri = $1`
+
+	result, err := q.db.ExecContext(ctx, query, recordURI)
+	if err != nil {
+		return fmt.Errorf("failed to delete response: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	// Not an error if response doesn't exist
+	if rows == 0 {
+		return nil
+	}
+
+	return nil
+}
+
+// DeleteSurveyByURI deletes a survey by its ATProto URI
+func (q *Queries) DeleteSurveyByURI(ctx context.Context, uri string) error {
+	query := `DELETE FROM surveys WHERE uri = $1`
+
+	result, err := q.db.ExecContext(ctx, query, uri)
+	if err != nil {
+		return fmt.Errorf("failed to delete survey: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	// Not an error if survey doesn't exist
+	if rows == 0 {
+		return nil
+	}
+
+	return nil
+}
+
 // Results Aggregation
 
 // GetSurveyResults aggregates all responses for a survey into results
@@ -494,4 +666,72 @@ func (q *Queries) GetSurveyResults(ctx context.Context, surveyID uuid.UUID) (*mo
 	}
 
 	return results, nil
+}
+
+// UpdateSurveyResults updates the results URI and CID for a survey
+func (q *Queries) UpdateSurveyResults(ctx context.Context, surveyID uuid.UUID, resultsURI, resultsCID string) error {
+	query := `
+		UPDATE surveys
+		SET results_uri = $2, results_cid = $3, updated_at = NOW()
+		WHERE id = $1
+	`
+
+	result, err := q.db.ExecContext(ctx, query, surveyID, resultsURI, resultsCID)
+	if err != nil {
+		return fmt.Errorf("failed to update survey results: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rows == 0 {
+		return fmt.Errorf("survey not found")
+	}
+
+	return nil
+}
+
+// GetSurveyByResultsURI retrieves a survey by its results URI
+func (q *Queries) GetSurveyByResultsURI(ctx context.Context, resultsURI string) (*models.Survey, error) {
+	query := `
+		SELECT id, uri, cid, author_did, slug, title, description, definition, starts_at, ends_at, results_uri, results_cid, created_at, updated_at
+		FROM surveys
+		WHERE results_uri = $1
+	`
+
+	survey := &models.Survey{}
+	var defJSON []byte
+
+	err := q.db.QueryRowContext(ctx, query, resultsURI).Scan(
+		&survey.ID,
+		&survey.URI,
+		&survey.CID,
+		&survey.AuthorDID,
+		&survey.Slug,
+		&survey.Title,
+		&survey.Description,
+		&defJSON,
+		&survey.StartsAt,
+		&survey.EndsAt,
+		&survey.ResultsURI,
+		&survey.ResultsCID,
+		&survey.CreatedAt,
+		&survey.UpdatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil // Not found is not an error for this query
+		}
+		return nil, fmt.Errorf("failed to query survey: %w", err)
+	}
+
+	// Unmarshal JSONB definition
+	if err := json.Unmarshal(defJSON, &survey.Definition); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal survey definition: %w", err)
+	}
+
+	return survey, nil
 }

@@ -46,15 +46,14 @@ func MetricsMiddleware() echo.MiddlewareFunc {
 			duration := time.Since(start).Seconds()
 			status := strconv.Itoa(c.Response().Status)
 			method := c.Request().Method
-			path := c.Path()
 
-			// Normalize paths with parameters to avoid high cardinality
-			// e.g., /surveys/:slug -> /surveys/:slug (not /surveys/my-survey-123)
-			if path == "" {
-				path = c.Request().URL.Path
+			// Use route pattern (e.g., /surveys/:slug) not actual path to bound cardinality
+			route := c.Path()
+			if route == "" {
+				route = "unknown" // Don't fall back to actual path - would explode cardinality
 			}
 
-			telemetry.HTTPRequestDuration.WithLabelValues(method, path, status).Observe(duration)
+			telemetry.HTTPRequestDuration.WithLabelValues(method, route, status).Observe(duration)
 
 			return err
 		}

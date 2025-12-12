@@ -34,7 +34,11 @@ CREATE TABLE surveys (
     starts_at TIMESTAMPTZ,
     ends_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+    -- Finalized results (set when author publishes aggregated results)
+    results_uri TEXT,
+    results_cid TEXT
 );
 
 -- Index for slug lookups (primary access pattern)
@@ -87,3 +91,6 @@ CREATE INDEX idx_responses_survey_id ON responses(survey_id);
 
 -- Index for looking up ATProto records (for Jetstream consumer)
 CREATE INDEX idx_responses_record_uri ON responses(record_uri) WHERE record_uri IS NOT NULL;
+
+-- Index for looking up surveys by results record
+CREATE INDEX idx_surveys_results_uri ON surveys(results_uri) WHERE results_uri IS NOT NULL;

@@ -32,6 +32,8 @@ type Survey struct {
 	Definition  SurveyDefinition  `db:"definition" json:"definition"`
 	StartsAt    *time.Time        `db:"starts_at" json:"startsAt,omitempty"`
 	EndsAt      *time.Time        `db:"ends_at" json:"endsAt,omitempty"`
+	ResultsURI  *string           `db:"results_uri" json:"resultsUri,omitempty"`
+	ResultsCID  *string           `db:"results_cid" json:"resultsCid,omitempty"`
 	CreatedAt   time.Time         `db:"created_at" json:"createdAt"`
 	UpdatedAt   time.Time         `db:"updated_at" json:"updatedAt"`
 }
