@@ -68,6 +68,12 @@ func main() {
 	handlers := api.NewHandlersWithOAuth(queries, oauthStorage)
 	healthHandlers := api.NewHealthHandlers(database)
 
+	// Set support URL from environment
+	if supportURL := os.Getenv("SUPPORT_URL"); supportURL != "" {
+		handlers.SetSupportURL(supportURL)
+		log.Printf("Support URL configured: %s", supportURL)
+	}
+
 	// Create OAuth handlers (optional - requires OAUTH_SECRET_JWK_B64 and SERVER_HOST env vars)
 	var oauthHandlers *oauth.Handlers
 	secretJWKB64 := os.Getenv("OAUTH_SECRET_JWK_B64")

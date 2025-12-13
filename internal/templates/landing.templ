@@ -6,7 +6,7 @@ import (
 	"github.com/openmeet-team/survey/internal/oauth"
 )
 
-templ LandingPage(stats *models.Stats, user *oauth.User, profile *oauth.Profile) {
+templ LandingPage(stats *models.Stats, user *oauth.User, profile *oauth.Profile, supportURL string) {
 	@Layout("Welcome", user, profile) {
 		<div class="card" style="text-align: center; padding: 3rem;">
 			<h1 style="font-size: 2.5rem; margin-bottom: 1rem;">Welcome to OpenMeet Survey</h1>
@@ -87,11 +87,13 @@ templ LandingPage(stats *models.Stats, user *oauth.User, profile *oauth.Profile)
 		</div>
 
 		<!-- Footer Support Link -->
-		<div style="text-align: center; margin-top: 2rem; color: #7f8c8d;">
-			<p>
-				Need help? <a href="https://bsky.app/profile/openmeet.net" style="color: #3498db;">Contact Support</a>
-			</p>
-		</div>
+		if supportURL != "" {
+			<div style="text-align: center; margin-top: 2rem; color: #7f8c8d;">
+				<p>
+					Need help? <a href={ templ.SafeURL(supportURL) } style="color: #3498db;">Contact Support</a>
+				</p>
+			</div>
+		}
 
 		<style>
 			.stat-card {

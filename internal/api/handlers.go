@@ -38,6 +38,7 @@ type QueriesInterface interface {
 type Handlers struct {
 	queries      QueriesInterface
 	oauthStorage *oauth.Storage
+	supportURL   string
 }
 
 // NewHandlers creates a new Handlers instance
@@ -45,6 +46,7 @@ func NewHandlers(q QueriesInterface) *Handlers {
 	return &Handlers{
 		queries:      q,
 		oauthStorage: nil, // Optional: can be nil if OAuth not configured
+		supportURL:   "",
 	}
 }
 
@@ -53,7 +55,13 @@ func NewHandlersWithOAuth(q QueriesInterface, oauthStorage *oauth.Storage) *Hand
 	return &Handlers{
 		queries:      q,
 		oauthStorage: oauthStorage,
+		supportURL:   "",
 	}
+}
+
+// SetSupportURL sets the support URL for the handlers
+func (h *Handlers) SetSupportURL(url string) {
+	h.supportURL = url
 }
 
 // CreateSurvey creates a new survey
@@ -990,7 +998,7 @@ func (h *Handlers) LandingPage(c echo.Context) error {
 	user, profile := getUserAndProfile(c)
 
 	c.Response().Header().Set(echo.HeaderContentType, echo.MIMETextHTMLCharsetUTF8)
-	component := templates.LandingPage(stats, user, profile)
+	component := templates.LandingPage(stats, user, profile, h.supportURL)
 	return component.Render(c.Request().Context(), c.Response().Writer)
 }
 
