@@ -9,10 +9,24 @@ import (
 
 	"github.com/openmeet-team/survey/internal/consumer"
 	"github.com/openmeet-team/survey/internal/db"
+	"github.com/openmeet-team/survey/internal/telemetry"
 )
 
 func main() {
 	log.Println("survey-consumer: Starting ATProto Jetstream consumer...")
+
+	// Initialize OpenTelemetry tracing
+	ctx := context.Background()
+	shutdownTracing, err := telemetry.InitTracing(ctx)
+	if err != nil {
+		log.Fatalf("Failed to initialize tracing: %v", err)
+	}
+	defer func() {
+		// Shutdown tracing on exit
+		if err := shutdownTracing(context.Background()); err != nil {
+			log.Printf("Error shutting down tracing: %v", err)
+		}
+	}()
 
 	// Load database configuration from environment
 	cfg, err := db.ConfigFromEnv()
@@ -21,7 +35,6 @@ func main() {
 	}
 
 	// Connect to database
-	ctx := context.Background()
 	database, err := db.Connect(ctx, cfg)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)

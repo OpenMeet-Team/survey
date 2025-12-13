@@ -23,6 +23,19 @@ func main() {
 	// Register Prometheus metrics
 	telemetry.RegisterMetrics()
 
+	// Initialize OpenTelemetry tracing
+	ctx := context.Background()
+	shutdownTracing, err := telemetry.InitTracing(ctx)
+	if err != nil {
+		log.Fatalf("Failed to initialize tracing: %v", err)
+	}
+	defer func() {
+		// Shutdown tracing on exit
+		if err := shutdownTracing(context.Background()); err != nil {
+			log.Printf("Error shutting down tracing: %v", err)
+		}
+	}()
+
 	// Get database configuration from environment
 	dbConfig, err := db.ConfigFromEnv()
 	if err != nil {
@@ -30,7 +43,6 @@ func main() {
 	}
 
 	// Connect to database
-	ctx := context.Background()
 	database, err := db.Connect(ctx, dbConfig)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)

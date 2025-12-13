@@ -6,6 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/openmeet-team/survey/internal/oauth"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 )
 
 // SetupRoutes configures all API routes
@@ -18,6 +19,7 @@ func SetupRoutes(e *echo.Echo, h *Handlers, hh *HealthHandlers, oh *oauth.Handle
 	// Apply middleware to all other routes
 	e.Use(RequestIDMiddleware())
 	e.Use(MetricsMiddleware())
+	e.Use(otelecho.Middleware("survey-api"))
 
 	// Create session middleware
 	storage := oauth.NewStorage(db)

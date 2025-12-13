@@ -1,6 +1,6 @@
 # OAuth Package - ATProto OAuth Implementation
 
-This package implements Bluesky ATProto OAuth 2.0 for the survey service.
+This package implements ATProto OAuth 2.0 for the survey service.
 
 ## Components
 

@@ -1,14 +1,15 @@
 # Survey Jetstream Consumer
 
-ATProto Jetstream consumer that indexes surveys and responses from Bluesky into PostgreSQL.
+ATProto Jetstream consumer that indexes surveys and responses from the ATProto network into PostgreSQL.
 
 ## What It Does
 
 Consumes real-time ATProto events and indexes them:
 - **Surveys** (`net.openmeet.survey`) → `surveys` table
 - **Responses** (`net.openmeet.survey.response`) → `responses` table
+- **Survey Results**
 
-Handles create/update/delete operations for both collections.
+Handles create/update/delete operations for each collection.
 
 ## Key Features
 

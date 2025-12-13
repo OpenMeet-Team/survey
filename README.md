@@ -10,7 +10,9 @@ A standalone survey/polling service with ATProto integration.
 - **JSON API**: RESTful API for programmatic access
 - **Live results**: Real-time result aggregation with polling
 - **Privacy-preserving**: Per-survey salted guest identity (can't track across surveys)
-- **ATProto ready**: Lexicons defined for future Bluesky integration
+- **ATProto login**: OAuth authentication via any ATProto PDS
+- **PDS writes**: Surveys and responses stored in user's Personal Data Server
+- **Federated indexing**: Jetstream consumer indexes surveys from any PDS on the network
 
 ## Architecture
 
@@ -46,12 +48,35 @@ psql survey < internal/db/migrations/001_initial.up.sql
 ### Configuration
 
 ```bash
+# Database
 export DATABASE_HOST=localhost
 export DATABASE_PORT=5432
 export DATABASE_USER=postgres
 export DATABASE_PASSWORD=yourpassword
 export DATABASE_NAME=survey
+
+# API Server
 export PORT=8080
+
+# OpenTelemetry Tracing (optional)
+export OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4318  # Jaeger OTLP HTTP endpoint
+export OTEL_SERVICE_NAME=survey-api                 # Service name in traces
+
+# ATProto OAuth (optional - enables "Login with ATProto")
+export OAUTH_SECRET_JWK_B64=<base64-encoded-JWK>   # Generate with: go run ./cmd/keygen
+export SERVER_HOST=https://survey.example.com       # Public URL of your service
+```
+
+**Tracing**: The service exports traces to Jaeger via OTLP HTTP. HTTP requests (via otelecho) and database queries (via otelsql) are automatically traced. If the OTLP endpoint is unavailable, the service logs a warning and continues running. To run Jaeger locally:
+
+```bash
+docker run -d --name jaeger \
+  -e COLLECTOR_OTLP_ENABLED=true \
+  -p 16686:16686 \
+  -p 4317:4317 \
+  -p 4318:4318 \
+  jaegertracing/all-in-one:latest
+# UI: http://localhost:16686
 ```
 
 ### Running the API Server
@@ -63,7 +88,7 @@ go run ./cmd/api
 
 ### Running the Jetstream Consumer
 
-The consumer indexes ATProto records from the Bluesky network:
+The consumer indexes ATProto records from the ATProto network:
 
 ```bash
 go run ./cmd/consumer
