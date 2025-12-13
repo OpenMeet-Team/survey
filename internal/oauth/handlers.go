@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -22,8 +23,19 @@ type Handlers struct {
 	config  Config
 }
 
+// normalizeHost strips protocol prefix from host if present
+// e.g., "https://survey.openmeet.net" -> "survey.openmeet.net"
+func normalizeHost(host string) string {
+	host = strings.TrimPrefix(host, "https://")
+	host = strings.TrimPrefix(host, "http://")
+	host = strings.TrimSuffix(host, "/")
+	return host
+}
+
 // NewHandlers creates a new Handlers instance
 func NewHandlers(db *sql.DB, config Config) *Handlers {
+	// Normalize the host to ensure it's just the hostname without protocol
+	config.Host = normalizeHost(config.Host)
 	return &Handlers{
 		storage: NewStorage(db),
 		config:  config,
