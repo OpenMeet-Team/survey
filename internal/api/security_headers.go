@@ -48,12 +48,12 @@ func SecurityHeadersMiddleware() echo.MiddlewareFunc {
 			// This is a balanced policy that allows common use cases while maintaining security
 			if res.Header().Get("Content-Security-Policy") == "" {
 				csp := "default-src 'self'; " +
-					"script-src 'self' 'unsafe-inline' https://unpkg.com https://*.posthog.com https://*.i.posthog.com; " + // Allow HTMX and PostHog
-					"style-src 'self' 'unsafe-inline'; " + // unsafe-inline needed for inline styles
+					"script-src 'self' 'unsafe-inline' https://unpkg.com https://cdnjs.cloudflare.com https://*.posthog.com https://*.i.posthog.com; " + // Allow HTMX, Monaco, and PostHog
+					"style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; " + // unsafe-inline needed for inline styles, Monaco CSS from CDN
 					"img-src 'self' data: https:; " + // Allow images from same origin, data URIs, and HTTPS
-					"font-src 'self' data:; " + // Allow fonts from same origin and data URIs
+					"font-src 'self' data: https://cdnjs.cloudflare.com; " + // Allow fonts from same origin, data URIs, and Monaco fonts
 					"connect-src 'self' https://*.posthog.com https://*.i.posthog.com; " + // Allow PostHog analytics
-					"worker-src 'self' blob:;" // Allow PostHog web workers
+					"worker-src 'self' blob: https://cdnjs.cloudflare.com;" // Allow PostHog web workers and Monaco workers
 
 				res.Header().Set("Content-Security-Policy", csp)
 			}

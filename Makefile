@@ -1,4 +1,4 @@
-.PHONY: test test-unit test-e2e test-all migrate migrate-up migrate-down migrate-create migrate-force templ
+.PHONY: test test-unit test-e2e test-all migrate migrate-up migrate-down migrate-create migrate-force templ frontend
 
 GO := /usr/local/go/bin/go
 TEMPL := $(shell which templ 2>/dev/null || echo "$(HOME)/go/bin/templ")
@@ -28,8 +28,16 @@ test-all:
 templ:
 	$(TEMPL) generate
 
-# Build the API server
-build: templ
+# Build frontend assets (Monaco editor)
+frontend:
+	cd web && npm install && npm run build
+
+# Build the API server (includes frontend and templ)
+build: frontend templ
+	$(GO) build -o bin/survey-api ./cmd/api
+
+# Build API server without frontend (faster for backend-only changes)
+build-quick: templ
 	$(GO) build -o bin/survey-api ./cmd/api
 
 # Build the consumer
@@ -47,6 +55,8 @@ run-consumer:
 # Clean build artifacts
 clean:
 	rm -rf bin/
+	rm -rf web/dist
+	rm -rf web/node_modules
 
 # ============================================================================
 # Database Migrations (requires golang-migrate)

@@ -32,6 +32,10 @@ go.work
 .DS_Store
 Thumbs.db
 
+# Node.js (frontend build)
+node_modules/
+web/dist/
+
 # Templ generated files
 *_templ.go
 

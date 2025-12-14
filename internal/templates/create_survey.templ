@@ -7,13 +7,13 @@ templ CreateSurvey(user *oauth.User, profile *oauth.Profile, posthogKey string) 
 		<div class="card">
 			<h1>Create New Survey</h1>
 			<p style="color: #7f8c8d; margin-bottom: 2rem;">
-				Define your survey using YAML or JSON format below.
+				Define your survey using YAML or JSON format below. The editor provides autocomplete (Ctrl+Space) and real-time validation.
 			</p>
 
 			<!-- Documentation Section -->
 			<details style="margin-bottom: 1.5rem; border: 1px solid #e1e8ed; border-radius: 8px; background: #fff;">
 				<summary style="padding: 1rem; cursor: pointer; font-weight: 600; background: #f8f9fa; border-radius: 8px 8px 0 0; display: flex; align-items: center; gap: 0.5rem;">
-					<span style="font-size: 1.1rem;">📖</span> YAML Format Documentation
+					<span style="font-size: 1.1rem;">?</span> Format Documentation
 				</summary>
 				<div style="padding: 1.5rem; border-top: 1px solid #e1e8ed;">
 					<h3 style="margin-top: 0; color: #2c3e50;">Question Types</h3>
@@ -36,74 +36,13 @@ templ CreateSurvey(user *oauth.User, profile *oauth.Profile, posthogKey string) 
 						</tr>
 					</table>
 
-					<h3 style="color: #2c3e50;">Question Fields</h3>
-					<table style="width: 100%; border-collapse: collapse; margin-bottom: 1.5rem;">
-						<tr style="background: #f8f9fa;">
-							<th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid #e1e8ed;">Field</th>
-							<th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid #e1e8ed;">Required</th>
-							<th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid #e1e8ed;">Description</th>
-						</tr>
-						<tr>
-							<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;"><code>id</code></td>
-							<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;">Yes</td>
-							<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;">Unique identifier (e.g., "q1", "feedback")</td>
-						</tr>
-						<tr>
-							<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;"><code>text</code></td>
-							<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;">Yes</td>
-							<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;">The question text shown to users</td>
-						</tr>
-						<tr>
-							<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;"><code>type</code></td>
-							<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;">Yes</td>
-							<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;"><code>single</code>, <code>multi</code>, or <code>text</code></td>
-						</tr>
-						<tr>
-							<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;"><code>required</code></td>
-							<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;">No</td>
-							<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;">If true, must be answered (default: false)</td>
-						</tr>
-						<tr>
-							<td style="padding: 0.5rem;"><code>options</code></td>
-							<td style="padding: 0.5rem;">For single/multi</td>
-							<td style="padding: 0.5rem;">List of options with <code>id</code> and <code>text</code> fields</td>
-						</tr>
-					</table>
-
-					<h3 style="color: #2c3e50;">Survey-Level Fields</h3>
-					<table style="width: 100%; border-collapse: collapse; margin-bottom: 1.5rem;">
-						<tr style="background: #f8f9fa;">
-							<th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid #e1e8ed;">Field</th>
-							<th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid #e1e8ed;">Description</th>
-						</tr>
-						<tr>
-							<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;"><code>questions</code></td>
-							<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;">List of questions (required, at least 1)</td>
-						</tr>
-						<tr>
-							<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;"><code>anonymous</code></td>
-							<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;">Set to true for anonymous surveys (results never show voters)</td>
-						</tr>
-						<tr>
-							<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;"><code>startsAt</code></td>
-							<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;">When voting opens (ISO 8601 format)</td>
-						</tr>
-						<tr>
-							<td style="padding: 0.5rem;"><code>endsAt</code></td>
-							<td style="padding: 0.5rem;">When voting closes (ISO 8601 format)</td>
-						</tr>
-					</table>
-
-					<h3 style="color: #2c3e50;">Validation Rules</h3>
+					<h3 style="color: #2c3e50;">Editor Tips</h3>
 					<ul style="margin: 0; padding-left: 1.5rem; color: #34495e;">
-						<li>At least 1 question required</li>
-						<li>Choice questions (single/multi) need at least 2 options</li>
-						<li>IDs must be unique within their scope</li>
-						<li>Text and IDs cannot be empty</li>
+						<li><strong>Ctrl+Space</strong> - Show autocomplete suggestions</li>
+						<li><strong>Hover</strong> - See field descriptions</li>
+						<li><strong>Red underlines</strong> - Validation errors</li>
+						<li><strong>YAML/JSON toggle</strong> - Switch between formats</li>
 					</ul>
-
-					<h3 style="color: #2c3e50; margin-top: 1.5rem;">Example Structure</h3>
-					<pre id="doc-example" style="background: #2d3436; color: #dfe6e9; padding: 1rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; white-space: pre;"><code></code></pre>
 				</div>
 			</details>
 
@@ -112,14 +51,28 @@ templ CreateSurvey(user *oauth.User, profile *oauth.Profile, posthogKey string) 
 				<label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
 					Load an Example
 				</label>
+				<p style="color: #7f8c8d; font-size: 0.9rem; margin: 0 0 0.75rem 0;">
+					Start with a template and customize it for your needs.
+				</p>
 				<div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
 					<select id="example-select" style="flex: 1; min-width: 200px; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
 						<option value="">-- Select an example --</option>
-						<option value="poll">Simple Poll</option>
-						<option value="feedback">Event Feedback</option>
-						<option value="retro">Team Retrospective</option>
-						<option value="rsvp">Event RSVP</option>
-						<option value="dev">Developer Survey</option>
+						<optgroup label="Motorcycle Club">
+							<option value="ride-planning">Monthly Ride Planning</option>
+							<option value="dinner-menu">Dinner Menu Selection</option>
+							<option value="club-gear">Club Gear Order</option>
+						</optgroup>
+						<optgroup label="Discussion Groups">
+							<option value="topic-vote">Topic Voting</option>
+							<option value="meeting-rsvp">Meeting RSVP</option>
+							<option value="speaker-feedback">Speaker Feedback</option>
+							<option value="book-selection">Book Club Selection</option>
+						</optgroup>
+						<optgroup label="General">
+							<option value="quick-poll">Quick Poll</option>
+							<option value="event-feedback">Event Feedback</option>
+							<option value="volunteer-signup">Volunteer Signup</option>
+						</optgroup>
 					</select>
 					<button type="button" id="load-example-btn" class="btn btn-secondary" style="padding: 0.5rem 1rem;">
 						Load Example
@@ -127,7 +80,7 @@ templ CreateSurvey(user *oauth.User, profile *oauth.Profile, posthogKey string) 
 				</div>
 			</div>
 
-			<form action="/surveys" method="POST">
+			<form id="survey-form" action="/surveys" method="POST">
 				<div style="margin-bottom: 1.5rem;">
 					<label for="slug" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
 						Slug (optional)
@@ -145,192 +98,258 @@ templ CreateSurvey(user *oauth.User, profile *oauth.Profile, posthogKey string) 
 				</div>
 
 				<div style="margin-bottom: 1.5rem;">
-					<label for="definition" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+					<label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
 						Survey Definition <span style="color: #e74c3c;">*</span>
 					</label>
+					<!-- Monaco Editor Container -->
+					<div id="editor-container"></div>
+					<!-- Hidden field for form submission -->
 					<textarea
 						id="definition"
 						name="definition"
 						required
-						rows="20"
-						style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 0.9rem;"
-						placeholder="Select an example above or write your own YAML/JSON"
+						style="display: none;"
 					></textarea>
 				</div>
 
-				<div style="margin-top: 2rem;">
-					<button type="submit" class="btn" style="width: 100%;">
+				<!-- Validation Status -->
+				<div id="validation-status" style="margin-bottom: 1rem; padding: 0.75rem; border-radius: 4px; display: none;">
+				</div>
+
+				<div style="margin-top: 2rem; display: flex; gap: 1rem;">
+					<button type="button" id="preview-btn" class="btn btn-secondary" style="flex: 1;">
+						Preview
+					</button>
+					<button type="submit" id="submit-btn" class="btn" style="flex: 2;">
 						Create Survey
 					</button>
 				</div>
 			</form>
+
+			<!-- Preview Modal -->
+			<div id="preview-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto;">
+				<div style="max-width: 700px; margin: 2rem auto; background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+					<div style="padding: 1rem 1.5rem; border-bottom: 1px solid #e1e8ed; display: flex; justify-content: space-between; align-items: center;">
+						<h2 style="margin: 0; font-size: 1.25rem;">Survey Preview</h2>
+						<button type="button" id="close-preview" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #7f8c8d; line-height: 1;">&times;</button>
+					</div>
+					<div id="preview-content" style="padding: 1.5rem;">
+						<!-- Preview renders here -->
+					</div>
+					<div style="padding: 1rem 1.5rem; border-top: 1px solid #e1e8ed; text-align: right;">
+						<button type="button" id="close-preview-btn" class="btn btn-secondary">Close Preview</button>
+					</div>
+				</div>
+			</div>
 		</div>
 
+		<!-- Monaco Editor from CDN -->
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs/loader.min.js"></script>
 		<script>
-			const examples = {
-				poll: `questions:
-  - id: q1
-    text: "What day works best for our team meetup?"
-    type: single
-    required: true
-    options:
-      - id: mon
-        text: Monday
-      - id: wed
-        text: Wednesday
-      - id: fri
-        text: Friday`,
-				feedback: `anonymous: true
-questions:
-  - id: q1
-    text: "How would you rate this event overall?"
-    type: single
-    required: true
-    options:
-      - id: opt1
-        text: "⭐ Excellent"
-      - id: opt2
-        text: "👍 Good"
-      - id: opt3
-        text: "😐 Average"
-      - id: opt4
-        text: "👎 Poor"
-  - id: q2
-    text: "What did you enjoy most?"
-    type: text
-    required: false
-  - id: q3
-    text: "What could be improved?"
-    type: text
-    required: false`,
-				retro: `anonymous: true
-questions:
-  - id: q1
-    text: "What went well this sprint?"
-    type: text
-    required: true
-  - id: q2
-    text: "What could be improved?"
-    type: text
-    required: true
-  - id: q3
-    text: "How are you feeling about the project?"
-    type: single
-    required: true
-    options:
-      - id: opt1
-        text: "🚀 Excited"
-      - id: opt2
-        text: "😊 Good"
-      - id: opt3
-        text: "😐 Neutral"
-      - id: opt4
-        text: "😟 Concerned"`,
-				rsvp: `questions:
-  - id: q1
-    text: "Will you attend the event?"
-    type: single
-    required: true
-    options:
-      - id: yes
-        text: "Yes, I'll be there!"
-      - id: maybe
-        text: "Maybe"
-      - id: no
-        text: "Can't make it"
-  - id: q2
-    text: "Any dietary restrictions?"
-    type: multi
-    required: false
-    options:
-      - id: veg
-        text: Vegetarian
-      - id: vegan
-        text: Vegan
-      - id: gf
-        text: Gluten-free
-      - id: none
-        text: None`,
-				dev: `anonymous: true
-questions:
-  - id: q1
-    text: "What's your favorite programming language?"
-    type: single
-    required: true
-    options:
-      - id: opt1
-        text: Go
-      - id: opt2
-        text: Python
-      - id: opt3
-        text: JavaScript
-      - id: opt4
-        text: Rust
-  - id: q2
-    text: "Which frameworks do you use? (select all that apply)"
-    type: multi
-    required: false
-    options:
-      - id: opt1
-        text: React
-      - id: opt2
-        text: Vue
-      - id: opt3
-        text: Angular
-  - id: q3
-    text: "Any additional comments?"
-    type: text
-    required: false`
-			};
-
-			document.getElementById('load-example-btn').addEventListener('click', function() {
-				const select = document.getElementById('example-select');
-				const textarea = document.getElementById('definition');
-				const selected = select.value;
-
-				if (selected && examples[selected]) {
-					textarea.value = examples[selected];
-					textarea.focus();
-				} else {
-					alert('Please select an example first');
+			// Configure Monaco AMD loader
+			require.config({
+				paths: {
+					'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.0/min/vs'
 				}
 			});
 
-			// Populate documentation example
-			const docExample = document.getElementById('doc-example');
-			if (docExample) {
-				docExample.querySelector('code').textContent = `questions:
-  - id: rating
-    text: "How satisfied are you?"
-    type: single
-    required: true
-    options:
-      - id: "5"
-        text: Very Satisfied
-      - id: "4"
-        text: Satisfied
-      - id: "3"
-        text: Neutral
-      - id: "2"
-        text: Dissatisfied
-      - id: "1"
-        text: Very Dissatisfied
+			// Load Monaco, then our editor script
+			require(['vs/editor/editor.main'], function() {
+				// Monaco is now available globally as 'monaco'
+				// Load our survey editor script
+				var script = document.createElement('script');
+				script.src = '/static/survey-editor.js';
+				script.onload = function() {
+					initSurveyEditor();
+				};
+				document.head.appendChild(script);
+			});
 
-  - id: features
-    text: "Which features do you use?"
-    type: multi
-    options:
-      - id: search
-        text: Search
-      - id: filter
-        text: Filters
-      - id: export
-        text: Export
+			function initSurveyEditor() {
+				// Create the survey editor (SurveyEditor is exported directly to window)
+				var editor = new window.SurveyEditor('editor-container', {
+					hiddenInput: 'definition',
+					height: '400px',
+					format: 'json',
+					onValidationChange: function(isValid, errors) {
+						var statusEl = document.getElementById('validation-status');
+						var submitBtn = document.getElementById('submit-btn');
 
-  - id: comments
-    text: "Any additional feedback?"
-    type: text`;
+						if (isValid) {
+							statusEl.style.display = 'none';
+							submitBtn.disabled = false;
+							submitBtn.style.opacity = '1';
+						} else {
+							statusEl.style.display = 'block';
+							statusEl.style.background = '#fff3cd';
+							statusEl.style.border = '1px solid #ffc107';
+							statusEl.innerHTML = '<strong>Validation Issues:</strong><ul style="margin: 0.5rem 0 0 1.5rem; padding: 0;">' +
+								errors.slice(0, 5).map(function(e) {
+									return '<li>Line ' + e.startLineNumber + ': ' + e.message + '</li>';
+								}).join('') +
+								(errors.length > 5 ? '<li>... and ' + (errors.length - 5) + ' more</li>' : '') +
+								'</ul>';
+							submitBtn.disabled = true;
+							submitBtn.style.opacity = '0.6';
+						}
+					}
+				});
+
+				// Store editor reference globally for example loading
+				window.surveyEditor = editor;
+
+				// Example loading
+				document.getElementById('load-example-btn').addEventListener('click', function() {
+					var select = document.getElementById('example-select');
+					var selected = select.value;
+					var examples = window.surveyExamples;
+
+					if (selected && examples && examples[selected]) {
+						window.surveyEditor.loadExample(selected);
+					} else if (selected) {
+						alert('Example not found');
+					} else {
+						alert('Please select an example first');
+					}
+				});
+
+				// Form submission validation
+				document.getElementById('survey-form').addEventListener('submit', function(e) {
+					if (window.surveyEditor.hasErrors()) {
+						e.preventDefault();
+						alert('Please fix validation errors before submitting.');
+						return false;
+					}
+				});
+
+				// Preview functionality
+				var previewModal = document.getElementById('preview-modal');
+				var previewContent = document.getElementById('preview-content');
+
+				document.getElementById('preview-btn').addEventListener('click', function() {
+					var content = window.surveyEditor.getValue();
+					var survey;
+
+					try {
+						survey = JSON.parse(content);
+					} catch (e) {
+						// Try simple YAML parse
+						try {
+							survey = window.surveyEditor.parseSimpleYaml ?
+								window.surveyEditor.parseSimpleYaml(content) :
+								JSON.parse(content);
+						} catch (e2) {
+							alert('Cannot preview: Please fix syntax errors first.');
+							return;
+						}
+					}
+
+					if (!survey || !survey.questions || survey.questions.length === 0) {
+						alert('Cannot preview: No questions defined.');
+						return;
+					}
+
+					previewContent.innerHTML = renderSurveyPreview(survey);
+					previewModal.style.display = 'block';
+					document.body.style.overflow = 'hidden';
+				});
+
+				document.getElementById('close-preview').addEventListener('click', closePreview);
+				document.getElementById('close-preview-btn').addEventListener('click', closePreview);
+				previewModal.addEventListener('click', function(e) {
+					if (e.target === previewModal) closePreview();
+				});
+
+				function closePreview() {
+					previewModal.style.display = 'none';
+					document.body.style.overflow = '';
+				}
+
+				function renderSurveyPreview(survey) {
+					var html = '';
+
+					// Anonymous badge
+					if (survey.anonymous) {
+						html += '<div style="background: #e8f4fd; color: #1976d2; padding: 0.5rem 1rem; border-radius: 4px; margin-bottom: 1rem; font-size: 0.9rem;">' +
+							'<strong>Anonymous Survey</strong> - Voter identities will be hidden in results' +
+							'</div>';
+					}
+
+					// Date range if set
+					if (survey.startsAt || survey.endsAt) {
+						html += '<div style="background: #f5f5f5; padding: 0.5rem 1rem; border-radius: 4px; margin-bottom: 1rem; font-size: 0.9rem; color: #666;">';
+						if (survey.startsAt) html += 'Opens: ' + new Date(survey.startsAt).toLocaleString() + '<br>';
+						if (survey.endsAt) html += 'Closes: ' + new Date(survey.endsAt).toLocaleString();
+						html += '</div>';
+					}
+
+					// Questions
+					survey.questions.forEach(function(q, idx) {
+						html += '<div style="margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid #eee;">';
+						html += '<label style="display: block; font-weight: 600; margin-bottom: 0.75rem; font-size: 1.1rem;">';
+						html += (idx + 1) + '. ' + escapeHtml(q.text);
+						if (q.required) {
+							html += ' <span style="color: #e74c3c;">*</span>';
+						}
+						html += '</label>';
+
+						if (q.type === 'single' && q.options) {
+							q.options.forEach(function(opt) {
+								html += '<div style="margin: 0.5rem 0; margin-left: 1rem;">';
+								html += '<label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">';
+								html += '<input type="radio" name="preview_' + q.id + '" disabled style="margin: 0;">';
+								html += '<span>' + escapeHtml(opt.text) + '</span>';
+								html += '</label></div>';
+							});
+						} else if (q.type === 'multi' && q.options) {
+							q.options.forEach(function(opt) {
+								html += '<div style="margin: 0.5rem 0; margin-left: 1rem;">';
+								html += '<label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">';
+								html += '<input type="checkbox" disabled style="margin: 0;">';
+								html += '<span>' + escapeHtml(opt.text) + '</span>';
+								html += '</label></div>';
+							});
+						} else if (q.type === 'text') {
+							html += '<textarea disabled placeholder="Text response..." style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; min-height: 80px; resize: vertical; background: #fafafa;"></textarea>';
+						}
+
+						html += '</div>';
+					});
+
+					// Submit button preview
+					html += '<div style="margin-top: 1rem;">';
+					html += '<button type="button" disabled class="btn" style="width: 100%; opacity: 0.7;">Submit Response</button>';
+					html += '</div>';
+
+					return html;
+				}
+
+				function escapeHtml(text) {
+					var div = document.createElement('div');
+					div.textContent = text;
+					return div.innerHTML;
+				}
 			}
 		</script>
+
+		<style>
+			/* Button styles for format toggle */
+			.btn-sm {
+				padding: 0.25rem 0.75rem;
+				font-size: 0.875rem;
+				border-radius: 4px;
+				border: 1px solid #ddd;
+				cursor: pointer;
+			}
+			.btn-primary {
+				background: #3498db;
+				color: white;
+				border-color: #3498db;
+			}
+			.btn-secondary {
+				background: #f8f9fa;
+				color: #333;
+			}
+		</style>
 	}
 }

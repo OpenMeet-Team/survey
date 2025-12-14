@@ -17,6 +17,9 @@ func SetupRoutes(e *echo.Echo, h *Handlers, hh *HealthHandlers, oh *oauth.Handle
 	e.GET("/health/ready", hh.Readiness)
 	e.GET("/metrics", echo.WrapHandler(promhttp.Handler()))
 
+	// Static files (Monaco editor assets)
+	e.Static("/static", "web/dist")
+
 	// Apply middleware to all other routes
 	e.Use(RequestIDMiddleware())
 	e.Use(MetricsMiddleware())
