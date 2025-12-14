@@ -3,9 +3,12 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/openmeet-team/survey/internal/consumer"
 	"github.com/openmeet-team/survey/internal/db"
@@ -45,6 +48,23 @@ func main() {
 
 	// Create queries instance
 	queries := db.NewQueries(database)
+
+	// Start metrics server for Prometheus scraping
+	metricsPort := os.Getenv("METRICS_PORT")
+	if metricsPort == "" {
+		metricsPort = "2112"
+	}
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("ok"))
+		})
+		log.Printf("Metrics server listening on :%s", metricsPort)
+		if err := http.ListenAndServe(":"+metricsPort, nil); err != nil {
+			log.Printf("Metrics server error: %v", err)
+		}
+	}()
 
 	// Build Jetstream URL
 	// Subscribe to survey, response, and results collections
