@@ -148,13 +148,14 @@ func (h *Handlers) Login(c echo.Context) error {
 	// Set state in cookie for CSRF protection
 	// This prevents attackers from using their own state value with a victim's session
 	// Must be set BEFORE any network calls so tests can verify cookie is set even if resolution fails
+	// Use SameSiteLax (not Strict) because OAuth callbacks are cross-site navigations
 	stateCookie := &http.Cookie{
 		Name:     "oauth_state",
 		Value:    state,
 		Path:     "/oauth",
 		HttpOnly: true,
 		Secure:   true, // HTTPS only
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteLaxMode,
 		MaxAge:   600, // 10 minutes (same as OAuth request expiry)
 	}
 	c.SetCookie(stateCookie)
@@ -266,7 +267,7 @@ func (h *Handlers) Callback(c echo.Context) error {
 		Path:     "/oauth",
 		HttpOnly: true,
 		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1, // Delete cookie
 	}
 	c.SetCookie(clearStateCookie)

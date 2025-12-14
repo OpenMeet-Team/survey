@@ -310,8 +310,8 @@ func TestLoginSetsOAuthStateCookie(t *testing.T) {
 			if !cookie.Secure {
 				t.Error("Expected Secure cookie")
 			}
-			if cookie.SameSite != http.SameSiteStrictMode {
-				t.Errorf("Expected SameSite=Strict, got %v", cookie.SameSite)
+			if cookie.SameSite != http.SameSiteLaxMode {
+				t.Errorf("Expected SameSite=Lax, got %v", cookie.SameSite)
 			}
 			if cookie.MaxAge != 600 { // 10 minutes
 				t.Errorf("Expected MaxAge=600, got %d", cookie.MaxAge)
