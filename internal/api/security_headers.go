@@ -48,11 +48,11 @@ func SecurityHeadersMiddleware() echo.MiddlewareFunc {
 			// This is a balanced policy that allows common use cases while maintaining security
 			if res.Header().Get("Content-Security-Policy") == "" {
 				csp := "default-src 'self'; " +
-					"script-src 'self' 'unsafe-inline' https://unpkg.com https://us.i.posthog.com; " + // Allow HTMX and PostHog
+					"script-src 'self' 'unsafe-inline' https://unpkg.com https://*.posthog.com https://*.i.posthog.com; " + // Allow HTMX and PostHog
 					"style-src 'self' 'unsafe-inline'; " + // unsafe-inline needed for inline styles
 					"img-src 'self' data: https:; " + // Allow images from same origin, data URIs, and HTTPS
 					"font-src 'self' data:; " + // Allow fonts from same origin and data URIs
-					"connect-src 'self' https://us.i.posthog.com;" // Allow PostHog analytics
+					"connect-src 'self' https://*.posthog.com https://*.i.posthog.com;" // Allow PostHog analytics
 
 				res.Header().Set("Content-Security-Policy", csp)
 			}
