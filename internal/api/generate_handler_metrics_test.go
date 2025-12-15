@@ -21,6 +21,7 @@ func TestGenerateSurvey_Metrics_Success(t *testing.T) {
 	// Reset metrics before test
 	telemetry.AIGenerationsTotal.Reset()
 	telemetry.AITokensTotal.Reset()
+	telemetry.AIDailyCostUSD.Set(0)
 
 	e := echo.New()
 	mockGen := NewMockSurveyGenerator(&generator.GenerateResult{

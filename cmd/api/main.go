@@ -91,10 +91,14 @@ func main() {
 		log.Println("AI survey generation disabled (OPENAI_API_KEY not configured)")
 	}
 
+	// Create generation logger
+	generationLogger := generator.NewGenerationLogger(queries)
+
 	// Create handlers with OAuth storage and optional AI generator
 	handlers := api.NewHandlersWithOAuth(queries, oauthStorage)
 	if surveyGenerator != nil && generatorRateLimiter != nil {
 		handlers.SetGenerator(surveyGenerator, generatorRateLimiter)
+		handlers.SetLogger(generationLogger)
 	}
 	healthHandlers := api.NewHealthHandlers(database)
 

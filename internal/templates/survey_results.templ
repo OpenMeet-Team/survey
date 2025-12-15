@@ -23,9 +23,12 @@ templ SurveyResults(survey *models.Survey, results *models.SurveyResults, user *
 				@ResultsPartial(survey, results)
 			</div>
 
-			<div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #ecf0f1;">
+			<div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #ecf0f1; display: flex; justify-content: space-between; align-items: center;">
 				<a href={ templ.URL("/surveys/" + survey.Slug) } class="btn btn-secondary">
 					← Back to Survey
+				</a>
+				<a href={ templ.URL("/surveys/new?template=" + survey.Slug) } style="color: #7f8c8d; text-decoration: none; font-size: 0.9rem;">
+					Use as Template
 				</a>
 			</div>
 		</div>

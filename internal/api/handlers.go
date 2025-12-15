@@ -39,6 +39,8 @@ type QueriesInterface interface {
 // GeneratorInterface defines the interface for AI survey generation
 type GeneratorInterface interface {
 	Generate(ctx context.Context, prompt string) (*generator.GenerateResult, error)
+	GenerateRaw(ctx context.Context, prompt string) (*generator.GenerateResult, error)
+	ValidateInput(input string) error
 }
 
 // RateLimiterInterface defines the interface for rate limiting
@@ -47,14 +49,21 @@ type RateLimiterInterface interface {
 	AllowAuthenticated(did string) bool
 }
 
+// GenerationLoggerInterface defines the interface for logging AI generation attempts
+type GenerationLoggerInterface interface {
+	LogSuccess(ctx context.Context, userID, userType, inputPrompt, systemPrompt, rawResponse string, result *generator.GenerateResult, durationMS int) error
+	LogError(ctx context.Context, userID, userType, inputPrompt, systemPrompt, status, errorMessage string, inputTokens, outputTokens int, costUSD float64, durationMS int) error
+}
+
 // Handlers holds the HTTP handlers and dependencies
 type Handlers struct {
-	queries      QueriesInterface
-	oauthStorage *oauth.Storage
-	supportURL   string
-	posthogKey   string
-	generator    GeneratorInterface
-	generatorRL  RateLimiterInterface
+	queries        QueriesInterface
+	oauthStorage   *oauth.Storage
+	supportURL     string
+	posthogKey     string
+	generator      GeneratorInterface
+	generatorRL    RateLimiterInterface
+	generationLog  GenerationLoggerInterface
 }
 
 // NewHandlers creates a new Handlers instance
@@ -89,6 +98,11 @@ func (h *Handlers) SetPostHogKey(key string) {
 func (h *Handlers) SetGenerator(gen GeneratorInterface, rl RateLimiterInterface) {
 	h.generator = gen
 	h.generatorRL = rl
+}
+
+// SetLogger sets the generation logger for AI survey generation
+func (h *Handlers) SetLogger(logger GenerationLoggerInterface) {
+	h.generationLog = logger
 }
 
 // CreateSurvey creates a new survey
@@ -395,12 +409,26 @@ func (h *Handlers) GetSurveyHTML(c echo.Context) error {
 
 // CreateSurveyPageHTML renders the create survey form
 // GET /surveys/new
+// Optional query param: template=<slug> to pre-populate from existing survey
 func (h *Handlers) CreateSurveyPageHTML(c echo.Context) error {
 	// Get user and profile from context
 	user, profile := getUserAndProfile(c)
 
+	// Check for template query param
+	var templateJSON string
+	if templateSlug := c.QueryParam("template"); templateSlug != "" {
+		survey, err := h.queries.GetSurveyBySlug(c.Request().Context(), templateSlug)
+		if err == nil && survey != nil {
+			// Serialize the definition to JSON
+			defBytes, err := json.Marshal(survey.Definition)
+			if err == nil {
+				templateJSON = string(defBytes)
+			}
+		}
+	}
+
 	c.Response().Header().Set(echo.HeaderContentType, echo.MIMETextHTMLCharsetUTF8)
-	component := templates.CreateSurvey(user, profile, h.posthogKey)
+	component := templates.CreateSurvey(user, profile, h.posthogKey, templateJSON)
 	return component.Render(c.Request().Context(), c.Response().Writer)
 }
 
@@ -1247,14 +1275,20 @@ func (h *Handlers) GenerateSurvey(c echo.Context) error {
 	// Get user context (authenticated vs anonymous)
 	user := oauth.GetUser(c)
 	var allowed bool
+	var userID string
+	var userType string
 
 	if user != nil {
 		// Authenticated user - check DID-based rate limit
 		allowed = h.generatorRL.AllowAuthenticated(user.DID)
+		userID = user.DID
+		userType = "authenticated"
 	} else {
 		// Anonymous user - check IP-based rate limit
 		ip := getClientIP(c)
 		allowed = h.generatorRL.AllowAnonymous(ip)
+		userID = ip
+		userType = "anonymous"
 	}
 
 	if !allowed {
@@ -1266,58 +1300,164 @@ func (h *Handlers) GenerateSurvey(c echo.Context) error {
 		}
 		telemetry.AIGenerationsTotal.WithLabelValues("rate_limited").Inc()
 
+		// Log rate limit error
+		if h.generationLog != nil {
+			// We don't have system prompt yet, so we'll use empty string
+			_ = h.generationLog.LogError(
+				c.Request().Context(),
+				userID,
+				userType,
+				req.Description,
+				"", // System prompt not available yet
+				"rate_limited",
+				"Rate limit exceeded",
+				0, 0, 0.0, 0,
+			)
+		}
+
 		return c.JSON(http.StatusTooManyRequests, ErrorResponse{
 			Error: "Rate limit exceeded for AI generation. Please try again later.",
 		})
 	}
 
+	// Validate user input first (before building combined prompt)
+	if err := h.generator.ValidateInput(req.Description); err != nil {
+		telemetry.AIGenerationsTotal.WithLabelValues("error").Inc()
+
+		if h.generationLog != nil {
+			_ = h.generationLog.LogError(
+				c.Request().Context(),
+				userID,
+				userType,
+				req.Description,
+				"",
+				"validation_failed",
+				err.Error(),
+				0, 0, 0.0, 0,
+			)
+		}
+
+		return c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error: err.Error(),
+		})
+	}
+
 	// Build prompt
 	prompt := req.Description
-	if req.ExistingJSON != "" {
+	isRefinement := req.ExistingJSON != ""
+	if isRefinement {
 		prompt = fmt.Sprintf("Existing survey JSON: %s\n\nModification request: %s", req.ExistingJSON, req.Description)
 	}
 
 	// Record duration metric
 	start := time.Now()
 
-	// Call generator
-	result, err := h.generator.Generate(c.Request().Context(), prompt)
+	// Call generator - use GenerateRaw for refinement (already validated user input)
+	var result *generator.GenerateResult
+	var err error
+	if isRefinement {
+		result, err = h.generator.GenerateRaw(c.Request().Context(), prompt)
+	} else {
+		result, err = h.generator.Generate(c.Request().Context(), prompt)
+	}
 
 	// Record duration
 	duration := time.Since(start).Seconds()
+	durationMS := int(duration * 1000)
 	telemetry.AIGenerationDuration.Observe(duration)
+
 	if err != nil {
+		// Determine error status and message for logging
+		var status string
+		var errorMessage string
+
 		// Check error type for specific responses
-		if errors.Is(err, generator.ErrInputTooLong) {
+		if errors.Is(err, generator.ErrInputTooLong) || errors.Is(err, generator.ErrEmptyInput) || errors.Is(err, generator.ErrBlockedPattern) {
+			status = "validation_failed"
+			errorMessage = err.Error()
 			telemetry.AIGenerationsTotal.WithLabelValues("error").Inc()
-			return c.JSON(http.StatusBadRequest, ErrorResponse{
-				Error:   "Input too long",
-				Details: err.Error(),
-			})
+
+			// Log validation error
+			if h.generationLog != nil {
+				_ = h.generationLog.LogError(
+					c.Request().Context(),
+					userID,
+					userType,
+					req.Description,
+					"", // System prompt not available on validation failure
+					status,
+					errorMessage,
+					0, 0, 0.0,
+					durationMS,
+				)
+			}
+
+			// Return specific error response
+			if errors.Is(err, generator.ErrInputTooLong) {
+				return c.JSON(http.StatusBadRequest, ErrorResponse{
+					Error:   "Input too long",
+					Details: err.Error(),
+				})
+			}
+			if errors.Is(err, generator.ErrEmptyInput) {
+				return c.JSON(http.StatusBadRequest, ErrorResponse{
+					Error:   "Input cannot be empty",
+					Details: err.Error(),
+				})
+			}
+			if errors.Is(err, generator.ErrBlockedPattern) {
+				return c.JSON(http.StatusBadRequest, ErrorResponse{
+					Error:   "Input contains blocked pattern",
+					Details: "Your input was flagged for potentially unsafe content",
+				})
+			}
 		}
-		if errors.Is(err, generator.ErrEmptyInput) {
-			telemetry.AIGenerationsTotal.WithLabelValues("error").Inc()
-			return c.JSON(http.StatusBadRequest, ErrorResponse{
-				Error:   "Input cannot be empty",
-				Details: err.Error(),
-			})
-		}
-		if errors.Is(err, generator.ErrBlockedPattern) {
-			telemetry.AIGenerationsTotal.WithLabelValues("error").Inc()
-			return c.JSON(http.StatusBadRequest, ErrorResponse{
-				Error:   "Input contains blocked pattern",
-				Details: "Your input was flagged for potentially unsafe content",
-			})
-		}
+
 		if errors.Is(err, generator.ErrCostLimitExceeded) {
+			status = "error"
+			errorMessage = "Cost limit exceeded"
 			telemetry.AIGenerationsTotal.WithLabelValues("budget_exceeded").Inc()
+
+			// Log cost limit error
+			if h.generationLog != nil {
+				_ = h.generationLog.LogError(
+					c.Request().Context(),
+					userID,
+					userType,
+					req.Description,
+					"", // System prompt not available
+					status,
+					errorMessage,
+					0, 0, 0.0,
+					durationMS,
+				)
+			}
+
 			return c.JSON(http.StatusServiceUnavailable, ErrorResponse{
 				Error: "AI generation budget exceeded. Please try again later.",
 			})
 		}
 
 		// Generic error
+		status = "error"
+		errorMessage = err.Error()
 		telemetry.AIGenerationsTotal.WithLabelValues("error").Inc()
+
+		// Log generic error
+		if h.generationLog != nil {
+			_ = h.generationLog.LogError(
+				c.Request().Context(),
+				userID,
+				userType,
+				req.Description,
+				"", // System prompt not available
+				status,
+				errorMessage,
+				0, 0, 0.0,
+				durationMS,
+			)
+		}
+
 		c.Logger().Errorf("AI generation failed: %v", err)
 		return c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Error:   "AI generation failed",
@@ -1332,6 +1472,20 @@ func (h *Handlers) GenerateSurvey(c echo.Context) error {
 
 	// Update daily cost (additive - gauge tracks cumulative cost for the day)
 	telemetry.AIDailyCostUSD.Add(result.EstimatedCost)
+
+	// Log successful generation
+	if h.generationLog != nil {
+		_ = h.generationLog.LogSuccess(
+			c.Request().Context(),
+			userID,
+			userType,
+			req.Description,
+			result.SystemPrompt,
+			result.RawResponse,
+			result,
+			durationMS,
+		)
+	}
 
 	// Return success response
 	return c.JSON(http.StatusOK, GenerateSurveyResponse{

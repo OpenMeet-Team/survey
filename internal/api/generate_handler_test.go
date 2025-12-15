@@ -18,12 +18,21 @@ import (
 
 // MockSurveyGenerator implements a mock version of generator.SurveyGenerator for testing
 type MockSurveyGenerator struct {
-	result *generator.GenerateResult
-	err    error
+	result        *generator.GenerateResult
+	err           error
+	validateError error
 }
 
 func (m *MockSurveyGenerator) Generate(ctx context.Context, prompt string) (*generator.GenerateResult, error) {
 	return m.result, m.err
+}
+
+func (m *MockSurveyGenerator) GenerateRaw(ctx context.Context, prompt string) (*generator.GenerateResult, error) {
+	return m.result, m.err
+}
+
+func (m *MockSurveyGenerator) ValidateInput(input string) error {
+	return m.validateError
 }
 
 func NewMockSurveyGenerator(result *generator.GenerateResult, err error) *MockSurveyGenerator {

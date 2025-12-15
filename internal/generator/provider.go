@@ -27,6 +27,8 @@ type GenerateResult struct {
 	InputTokens   int
 	OutputTokens  int
 	EstimatedCost float64
+	SystemPrompt  string // The system prompt sent to the LLM
+	RawResponse   string // The raw LLM response before sanitization
 }
 
 // SurveyGenerator generates surveys using an LLM
@@ -49,16 +51,33 @@ func NewSurveyGenerator(llm llms.Model, model string) *SurveyGenerator {
 	}
 }
 
+// ValidateInput validates user input before generation
+// Use this to pre-validate input when building refinement prompts
+func (g *SurveyGenerator) ValidateInput(input string) error {
+	return g.validator.Validate(input)
+}
+
 // Generate creates a survey from a natural language prompt
 func (g *SurveyGenerator) Generate(ctx context.Context, prompt string) (*GenerateResult, error) {
+	// Validate input first
+	if err := g.validator.Validate(prompt); err != nil {
+		return nil, fmt.Errorf("invalid input: %w", err)
+	}
+	return g.generateInternal(ctx, prompt)
+}
+
+// GenerateRaw creates a survey without validating the prompt
+// Use this when the prompt has already been validated or is a refinement prompt
+// containing pre-validated user input combined with trusted existing JSON
+func (g *SurveyGenerator) GenerateRaw(ctx context.Context, prompt string) (*GenerateResult, error) {
+	return g.generateInternal(ctx, prompt)
+}
+
+// generateInternal is the shared implementation for Generate and GenerateRaw
+func (g *SurveyGenerator) generateInternal(ctx context.Context, prompt string) (*GenerateResult, error) {
 	// Check context first
 	if ctx.Err() != nil {
 		return nil, ErrContextCanceled
-	}
-
-	// Validate input
-	if err := g.validator.Validate(prompt); err != nil {
-		return nil, fmt.Errorf("invalid input: %w", err)
 	}
 
 	// Estimate cost before making the call
@@ -118,6 +137,8 @@ func (g *SurveyGenerator) Generate(ctx context.Context, prompt string) (*Generat
 		InputTokens:   actualInputTokens,
 		OutputTokens:  actualOutputTokens,
 		EstimatedCost: estimatedCost,
+		SystemPrompt:  systemPrompt,
+		RawResponse:   responseText,
 	}, nil
 }
 

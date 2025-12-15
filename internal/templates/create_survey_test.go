@@ -43,7 +43,7 @@ func TestCreateSurvey_RendersWithoutError(t *testing.T) {
 			var buf bytes.Buffer
 			ctx := context.Background()
 
-			err := CreateSurvey(tt.user, tt.profile, tt.posthogKey).Render(ctx, &buf)
+			err := CreateSurvey(tt.user, tt.profile, tt.posthogKey, "").Render(ctx, &buf)
 			require.NoError(t, err, "Template should render without errors")
 
 			html := buf.String()
@@ -57,7 +57,7 @@ func TestCreateSurvey_ContainsAIGenerationUI(t *testing.T) {
 	var buf bytes.Buffer
 	ctx := context.Background()
 
-	err := CreateSurvey(nil, nil, "").Render(ctx, &buf)
+	err := CreateSurvey(nil, nil, "", "").Render(ctx, &buf)
 	require.NoError(t, err)
 
 	html := buf.String()
@@ -85,7 +85,7 @@ func TestCreateSurvey_ContainsGenerateHandlerScript(t *testing.T) {
 	var buf bytes.Buffer
 	ctx := context.Background()
 
-	err := CreateSurvey(nil, nil, "").Render(ctx, &buf)
+	err := CreateSurvey(nil, nil, "", "").Render(ctx, &buf)
 	require.NoError(t, err)
 
 	html := buf.String()
@@ -99,4 +99,54 @@ func TestCreateSurvey_ContainsGenerateHandlerScript(t *testing.T) {
 
 	// Check for consent validation
 	assert.Contains(t, html, "ai-consent", "Should check consent before generating")
+}
+
+// TestCreateSurvey_TemplateMode ensures template mode shows correct UI
+func TestCreateSurvey_TemplateMode(t *testing.T) {
+	var buf bytes.Buffer
+	ctx := context.Background()
+
+	templateJSON := `{"title":"Test Survey","questions":[{"id":"q1","text":"Test?","type":"single"}]}`
+	err := CreateSurvey(nil, nil, "", templateJSON).Render(ctx, &buf)
+	require.NoError(t, err)
+
+	html := buf.String()
+
+	// Check for template-specific UI elements
+	assert.Contains(t, html, "Build on Existing Survey", "Should have template mode header")
+	assert.Contains(t, html, "Modify with AI", "Should have modify section heading")
+	assert.Contains(t, html, "Describe what you'd like to change", "Should have template-specific label")
+	assert.Contains(t, html, "Modify Survey", "Should have modify button text")
+	assert.Contains(t, html, "Skip to Editor", "Should have simplified skip button text")
+
+	// Check that template data is embedded as data attribute
+	assert.Contains(t, html, "id=\"template-data\"", "Should have template data element")
+	assert.Contains(t, html, "data-template=", "Should have data-template attribute")
+
+	// Verify normal mode elements are NOT present
+	assert.NotContains(t, html, "Create New Survey", "Should NOT have create new header")
+	assert.NotContains(t, html, "Generate Survey with AI", "Should NOT have generate section heading")
+}
+
+// TestCreateSurvey_NormalMode ensures normal mode shows correct UI
+func TestCreateSurvey_NormalMode(t *testing.T) {
+	var buf bytes.Buffer
+	ctx := context.Background()
+
+	err := CreateSurvey(nil, nil, "", "").Render(ctx, &buf)
+	require.NoError(t, err)
+
+	html := buf.String()
+
+	// Check for normal mode UI elements
+	assert.Contains(t, html, "Create New Survey", "Should have normal mode header")
+	assert.Contains(t, html, "Generate Survey with AI", "Should have generate section heading")
+	assert.Contains(t, html, "Describe your survey in plain text", "Should have normal label")
+	assert.Contains(t, html, "Generate Survey", "Should have generate button text")
+	assert.Contains(t, html, "Skip to Advanced Editor", "Should have full skip button text")
+
+	// Verify template mode elements are NOT present
+	assert.NotContains(t, html, "Build on Existing Survey", "Should NOT have template header")
+	assert.NotContains(t, html, "Modify with AI", "Should NOT have modify heading")
+	assert.NotContains(t, html, "id=\"template-data\"", "Should NOT have template data script")
 }

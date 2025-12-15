@@ -2,25 +2,45 @@ package templates
 
 import "github.com/openmeet-team/survey/internal/oauth"
 
-templ CreateSurvey(user *oauth.User, profile *oauth.Profile, posthogKey string) {
+// templateJSON is optional - if provided, pre-populates the editor with this definition
+templ CreateSurvey(user *oauth.User, profile *oauth.Profile, posthogKey string, templateJSON string) {
 	@Layout("Create Survey", user, profile, posthogKey) {
 		<div class="card">
-			<h1>Create New Survey</h1>
-			<p style="color: #7f8c8d; margin-bottom: 2rem;">
-				Use AI to generate a survey from your description, or write YAML/JSON directly below.
-			</p>
+			if templateJSON != "" {
+				<h1>Build on Existing Survey</h1>
+				<p style="color: #7f8c8d; margin-bottom: 2rem;">
+					You're starting from an existing survey. Describe your changes below and AI will modify it, or edit the definition directly in the editor.
+				</p>
+				<!-- Hidden template data for JS to pick up -->
+				<div id="template-data" style="display:none;" data-template={ templateJSON }></div>
+			} else {
+				<h1>Create New Survey</h1>
+				<p style="color: #7f8c8d; margin-bottom: 2rem;">
+					Use AI to generate a survey from your description, or write YAML/JSON directly below.
+				</p>
+			}
 
 			<!-- AI Generation Section -->
 			<div id="ai-section" style="margin-bottom: 2rem; padding: 1.5rem; background: #f8f9fa; border-radius: 8px; border: 1px solid #e1e8ed;">
-				<h2 style="font-size: 1.25rem; margin-bottom: 1rem;">Generate Survey with AI</h2>
-
-				<label for="ai-description" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
-					Describe your survey in plain text:
-				</label>
+				if templateJSON != "" {
+					<h2 style="font-size: 1.25rem; margin-bottom: 1rem;">Modify with AI</h2>
+					<label for="ai-description" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+						Describe what you'd like to change:
+					</label>
+				} else {
+					<h2 style="font-size: 1.25rem; margin-bottom: 1rem;">Generate Survey with AI</h2>
+					<label for="ai-description" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+						Describe your survey in plain text:
+					</label>
+				}
 				<textarea
 					id="ai-description"
 					maxlength="2000"
-					placeholder="Example: I want to survey my motorcycle club about where to ride this month. Options should include Volcano National Park, Waipio Valley, South Point, and North Kohala."
+					if templateJSON != "" {
+						placeholder="Example: Add an 'Other' option to the first question, change the second question to allow multiple selections, and add a text question at the end for additional comments."
+					} else {
+						placeholder="Example: I want to survey my motorcycle club about where to ride this month. Options should include Volcano National Park, Waipio Valley, South Point, and North Kohala."
+					}
 					style="width: 100%; min-height: 120px; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; resize: vertical; font-size: 1rem;"
 				></textarea>
 				<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
@@ -28,9 +48,15 @@ templ CreateSurvey(user *oauth.User, profile *oauth.Profile, posthogKey string) 
 				</div>
 
 				<div style="margin: 1rem 0; padding: 0.75rem; background: #e8f4fd; border-left: 4px solid #3498db; border-radius: 4px;">
-					<p style="margin: 0; color: #2c3e50; font-size: 0.9rem;">
-						💡 <strong>Tip:</strong> Paste an email, write bullet points, or just describe what you want to ask. The AI will structure it into a proper survey.
-					</p>
+					if templateJSON != "" {
+						<p style="margin: 0; color: #2c3e50; font-size: 0.9rem;">
+							💡 <strong>Tip:</strong> Describe what to add, remove, or change. For example: "add more options", "make question 2 required", or "change the title to Monthly Poll".
+						</p>
+					} else {
+						<p style="margin: 0; color: #2c3e50; font-size: 0.9rem;">
+							💡 <strong>Tip:</strong> Paste an email, write bullet points, or just describe what you want to ask. The AI will structure it into a proper survey.
+						</p>
+					}
 				</div>
 
 				<div style="margin: 1rem 0;">
@@ -46,10 +72,18 @@ templ CreateSurvey(user *oauth.User, profile *oauth.Profile, posthogKey string) 
 
 				<div style="display: flex; gap: 1rem; align-items: center;">
 					<button type="button" id="generate-btn" class="btn" style="flex: 1;" disabled>
-						Generate Survey
+						if templateJSON != "" {
+							Modify Survey
+						} else {
+							Generate Survey
+						}
 					</button>
 					<button type="button" id="toggle-editor-btn" class="btn btn-secondary">
-						Skip to Advanced Editor
+						if templateJSON != "" {
+							Skip to Editor
+						} else {
+							Skip to Advanced Editor
+						}
 					</button>
 				</div>
 
@@ -58,81 +92,85 @@ templ CreateSurvey(user *oauth.User, profile *oauth.Profile, posthogKey string) 
 				</div>
 			</div>
 
-			<div id="editor-section-divider" style="margin: 2rem 0; text-align: center; color: #7f8c8d; font-weight: 600;">
-				OR
-			</div>
-
-			<!-- Documentation Section -->
-			<details style="margin-bottom: 1.5rem; border: 1px solid #e1e8ed; border-radius: 8px; background: #fff;">
-				<summary style="padding: 1rem; cursor: pointer; font-weight: 600; background: #f8f9fa; border-radius: 8px 8px 0 0; display: flex; align-items: center; gap: 0.5rem;">
-					<span style="font-size: 1.1rem;">?</span> Format Documentation
-				</summary>
-				<div style="padding: 1.5rem; border-top: 1px solid #e1e8ed;">
-					<h3 style="margin-top: 0; color: #2c3e50;">Question Types</h3>
-					<table style="width: 100%; border-collapse: collapse; margin-bottom: 1.5rem;">
-						<tr style="background: #f8f9fa;">
-							<th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid #e1e8ed;">Type</th>
-							<th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid #e1e8ed;">Behavior</th>
-						</tr>
-						<tr>
-							<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;"><code>single</code></td>
-							<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;">Pick exactly one option (radio buttons)</td>
-						</tr>
-						<tr>
-							<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;"><code>multi</code></td>
-							<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;">Pick one or more options (checkboxes)</td>
-						</tr>
-						<tr>
-							<td style="padding: 0.5rem;"><code>text</code></td>
-							<td style="padding: 0.5rem;">Free-form text answer</td>
-						</tr>
-					</table>
-
-					<h3 style="color: #2c3e50;">Editor Tips</h3>
-					<ul style="margin: 0; padding-left: 1.5rem; color: #34495e;">
-						<li><strong>Ctrl+Space</strong> - Show autocomplete suggestions</li>
-						<li><strong>Hover</strong> - See field descriptions</li>
-						<li><strong>Red underlines</strong> - Validation errors</li>
-						<li><strong>YAML/JSON toggle</strong> - Switch between formats</li>
-					</ul>
+			<!-- Editor intro section - hidden by default, shown when skipping to editor -->
+			<div id="editor-intro-section" style="display: none;">
+				<div id="editor-section-divider" style="margin: 2rem 0; text-align: center; color: #7f8c8d; font-weight: 600;">
+					OR
 				</div>
-			</details>
 
-			<!-- Example Selector -->
-			<div style="margin-bottom: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 4px;">
-				<label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
-					Load an Example
-				</label>
-				<p style="color: #7f8c8d; font-size: 0.9rem; margin: 0 0 0.75rem 0;">
-					Start with a template and customize it for your needs.
-				</p>
-				<div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-					<select id="example-select" style="flex: 1; min-width: 200px; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-						<option value="">-- Select an example --</option>
-						<optgroup label="Motorcycle Club">
-							<option value="ride-planning">Monthly Ride Planning</option>
-							<option value="dinner-menu">Dinner Menu Selection</option>
-							<option value="club-gear">Club Gear Order</option>
-						</optgroup>
-						<optgroup label="Discussion Groups">
-							<option value="topic-vote">Topic Voting</option>
-							<option value="meeting-rsvp">Meeting RSVP</option>
-							<option value="speaker-feedback">Speaker Feedback</option>
-							<option value="book-selection">Book Club Selection</option>
-						</optgroup>
-						<optgroup label="General">
-							<option value="quick-poll">Quick Poll</option>
-							<option value="event-feedback">Event Feedback</option>
-							<option value="volunteer-signup">Volunteer Signup</option>
-						</optgroup>
-					</select>
-					<button type="button" id="load-example-btn" class="btn btn-secondary" style="padding: 0.5rem 1rem;">
-						Load Example
-					</button>
+				<!-- Documentation Section -->
+				<details style="margin-bottom: 1.5rem; border: 1px solid #e1e8ed; border-radius: 8px; background: #fff;">
+					<summary style="padding: 1rem; cursor: pointer; font-weight: 600; background: #f8f9fa; border-radius: 8px 8px 0 0; display: flex; align-items: center; gap: 0.5rem;">
+						<span style="font-size: 1.1rem;">?</span> Format Documentation
+					</summary>
+					<div style="padding: 1.5rem; border-top: 1px solid #e1e8ed;">
+						<h3 style="margin-top: 0; color: #2c3e50;">Question Types</h3>
+						<table style="width: 100%; border-collapse: collapse; margin-bottom: 1.5rem;">
+							<tr style="background: #f8f9fa;">
+								<th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid #e1e8ed;">Type</th>
+								<th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid #e1e8ed;">Behavior</th>
+							</tr>
+							<tr>
+								<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;"><code>single</code></td>
+								<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;">Pick exactly one option (radio buttons)</td>
+							</tr>
+							<tr>
+								<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;"><code>multi</code></td>
+								<td style="padding: 0.5rem; border-bottom: 1px solid #e1e8ed;">Pick one or more options (checkboxes)</td>
+							</tr>
+							<tr>
+								<td style="padding: 0.5rem;"><code>text</code></td>
+								<td style="padding: 0.5rem;">Free-form text answer</td>
+							</tr>
+						</table>
+
+						<h3 style="color: #2c3e50;">Editor Tips</h3>
+						<ul style="margin: 0; padding-left: 1.5rem; color: #34495e;">
+							<li><strong>Ctrl+Space</strong> - Show autocomplete suggestions</li>
+							<li><strong>Hover</strong> - See field descriptions</li>
+							<li><strong>Red underlines</strong> - Validation errors</li>
+							<li><strong>YAML/JSON toggle</strong> - Switch between formats</li>
+						</ul>
+					</div>
+				</details>
+
+				<!-- Example Selector -->
+				<div style="margin-bottom: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 4px;">
+					<label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+						Load an Example
+					</label>
+					<p style="color: #7f8c8d; font-size: 0.9rem; margin: 0 0 0.75rem 0;">
+						Start with a template and customize it for your needs.
+					</p>
+					<div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+						<select id="example-select" style="flex: 1; min-width: 200px; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+							<option value="">-- Select an example --</option>
+							<optgroup label="Motorcycle Club">
+								<option value="ride-planning">Monthly Ride Planning</option>
+								<option value="dinner-menu">Dinner Menu Selection</option>
+								<option value="club-gear">Club Gear Order</option>
+							</optgroup>
+							<optgroup label="Discussion Groups">
+								<option value="topic-vote">Topic Voting</option>
+								<option value="meeting-rsvp">Meeting RSVP</option>
+								<option value="speaker-feedback">Speaker Feedback</option>
+								<option value="book-selection">Book Club Selection</option>
+							</optgroup>
+							<optgroup label="General">
+								<option value="quick-poll">Quick Poll</option>
+								<option value="event-feedback">Event Feedback</option>
+								<option value="volunteer-signup">Volunteer Signup</option>
+							</optgroup>
+						</select>
+						<button type="button" id="load-example-btn" class="btn btn-secondary" style="padding: 0.5rem 1rem;">
+							Load Example
+						</button>
+					</div>
 				</div>
 			</div>
 
 			<form id="survey-form" action="/surveys" method="POST">
+				<div id="editor-section" style="display: none;">
 				<div style="margin-bottom: 1.5rem;">
 					<label for="slug" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
 						Slug (optional)
@@ -153,6 +191,9 @@ templ CreateSurvey(user *oauth.User, profile *oauth.Profile, posthogKey string) 
 					<label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
 						Survey Definition <span style="color: #e74c3c;">*</span>
 					</label>
+					<p id="editor-hint" style="display: none; color: #7f8c8d; font-size: 0.9rem; margin: 0 0 0.75rem 0;">
+						This content may have been AI-generated or loaded from a template. Review and edit as needed before publishing.
+					</p>
 					<!-- Monaco Editor Container -->
 					<div id="editor-container"></div>
 					<!-- Hidden field for form submission -->
@@ -176,9 +217,10 @@ templ CreateSurvey(user *oauth.User, profile *oauth.Profile, posthogKey string) 
 						Create Survey
 					</button>
 				</div>
+				</div><!-- End editor-section -->
 			</form>
 
-			<!-- Preview Modal -->
+			<!-- Preview Modal (for editor preview) -->
 			<div id="preview-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto;">
 				<div style="max-width: 700px; margin: 2rem auto; background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
 					<div style="padding: 1rem 1.5rem; border-bottom: 1px solid #e1e8ed; display: flex; justify-content: space-between; align-items: center;">
@@ -190,6 +232,54 @@ templ CreateSurvey(user *oauth.User, profile *oauth.Profile, posthogKey string) 
 					</div>
 					<div style="padding: 1rem 1.5rem; border-top: 1px solid #e1e8ed; text-align: right;">
 						<button type="button" id="close-preview-btn" class="btn btn-secondary">Close Preview</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- AI Preview Modal (for AI generation preview/refinement) -->
+			<div id="ai-preview-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1001; overflow-y: auto;">
+				<div style="max-width: 700px; margin: 2rem auto; background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+					<div style="padding: 1rem 1.5rem; border-bottom: 1px solid #e1e8ed; display: flex; justify-content: space-between; align-items: center;">
+						<h2 style="margin: 0; font-size: 1.25rem;">AI Generated Survey</h2>
+						<button type="button" id="close-ai-preview" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #7f8c8d; line-height: 1;">&times;</button>
+					</div>
+					<div id="ai-preview-content" style="padding: 1.5rem; max-height: 60vh; overflow-y: auto;">
+						<!-- AI generated survey preview renders here -->
+					</div>
+
+					<!-- Refinement Section (initially hidden) -->
+					<div id="ai-refinement-section" style="display: none; padding: 1rem 1.5rem; background: #f8f9fa; border-top: 1px solid #e1e8ed;">
+						<label for="ai-refinement-input" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+							What would you like to change?
+						</label>
+						<textarea
+							id="ai-refinement-input"
+							placeholder="Example: Make question 2 a multiple choice question instead, add an option for 'Other'"
+							style="width: 100%; min-height: 80px; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; resize: vertical; font-size: 1rem;"
+						></textarea>
+						<div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+							<button type="button" id="submit-refinement-btn" class="btn" style="flex: 1;">
+								Refine Survey
+							</button>
+							<button type="button" id="cancel-refinement-btn" class="btn btn-secondary">
+								Cancel
+							</button>
+						</div>
+					</div>
+
+					<!-- Footer with actions and metadata -->
+					<div style="padding: 1rem 1.5rem; border-top: 1px solid #e1e8ed;">
+						<div id="ai-preview-metadata" style="font-size: 0.85rem; color: #7f8c8d; margin-bottom: 1rem;">
+							<!-- Token/cost info displays here -->
+						</div>
+						<div style="display: flex; gap: 1rem;">
+							<button type="button" id="accept-ai-survey-btn" class="btn" style="flex: 2;">
+								Accept Survey
+							</button>
+							<button type="button" id="try-again-btn" class="btn btn-secondary" style="flex: 1;">
+								Try Again
+							</button>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -208,6 +298,25 @@ templ CreateSurvey(user *oauth.User, profile *oauth.Profile, posthogKey string) 
 				var loadingDiv = document.getElementById('ai-loading');
 				var toggleEditorBtn = document.getElementById('toggle-editor-btn');
 
+				// AI Preview Modal elements
+				var aiPreviewModal = document.getElementById('ai-preview-modal');
+				var aiPreviewContent = document.getElementById('ai-preview-content');
+				var aiPreviewMetadata = document.getElementById('ai-preview-metadata');
+				var acceptBtn = document.getElementById('accept-ai-survey-btn');
+				var tryAgainBtn = document.getElementById('try-again-btn');
+				var closeAiPreviewBtn = document.getElementById('close-ai-preview');
+				var refinementSection = document.getElementById('ai-refinement-section');
+				var refinementInput = document.getElementById('ai-refinement-input');
+				var submitRefinementBtn = document.getElementById('submit-refinement-btn');
+				var cancelRefinementBtn = document.getElementById('cancel-refinement-btn');
+
+				// State for AI conversation
+				var lastGeneratedJSON = null;
+				var lastGeneratedSurvey = null;
+				var originalPrompt = null;
+				var lastTokens = 0;
+				var lastCost = 0;
+
 				// Character counter
 				descriptionTextarea.addEventListener('input', function() {
 					var length = descriptionTextarea.value.length;
@@ -224,12 +333,16 @@ templ CreateSurvey(user *oauth.User, profile *oauth.Profile, posthogKey string) 
 					generateBtn.disabled = !(hasText && hasConsent);
 				}
 
-				// Toggle editor visibility
+				// Skip to editor button - shows both intro and editor sections
 				toggleEditorBtn.addEventListener('click', function() {
-					var editorSection = document.getElementById('editor-container').parentElement;
-					var isHidden = editorSection.style.display === 'none';
-					editorSection.style.display = isHidden ? 'block' : 'none';
-					toggleEditorBtn.textContent = isHidden ? 'Hide Advanced Editor' : 'Show Advanced Editor';
+					var editorIntroSection = document.getElementById('editor-intro-section');
+					var editorSection = document.getElementById('editor-section');
+					editorIntroSection.style.display = 'block';
+					editorSection.style.display = 'block';
+					editorIntroSection.scrollIntoView({
+						behavior: 'smooth',
+						block: 'start'
+					});
 				});
 
 				// Generate survey with AI
@@ -247,20 +360,34 @@ templ CreateSurvey(user *oauth.User, profile *oauth.Profile, posthogKey string) 
 						return;
 					}
 
+					// Store original prompt for refinement
+					originalPrompt = description;
+
+					// If a template is loaded, use it as the base for AI generation
+					callAIGenerate(description, window.loadedTemplateJSON || null);
+				});
+
+				// Call AI generation API
+				function callAIGenerate(description, existingJson) {
 					hideError();
 					generateBtn.disabled = true;
 					loadingDiv.style.display = 'block';
 
-					// Call the API
+					var requestBody = {
+						description: description,
+						consent: true
+					};
+
+					if (existingJson) {
+						requestBody.existing_json = existingJson;
+					}
+
 					fetch('/api/v1/surveys/generate', {
 						method: 'POST',
 						headers: {
 							'Content-Type': 'application/json',
 						},
-						body: JSON.stringify({
-							description: description,
-							consent: consent
-						})
+						body: JSON.stringify(requestBody)
 					})
 					.then(function(response) {
 						if (!response.ok) {
@@ -272,30 +399,119 @@ templ CreateSurvey(user *oauth.User, profile *oauth.Profile, posthogKey string) 
 					})
 					.then(function(data) {
 						loadingDiv.style.display = 'none';
+						generateBtn.disabled = false;
 
-						// Populate Monaco editor with generated definition
-						if (window.surveyEditor && data.definition) {
-							var definitionStr = typeof data.definition === 'string'
-								? data.definition
-								: JSON.stringify(data.definition, null, 2);
-							window.surveyEditor.setValue(definitionStr);
+						// Store the generated data
+						lastGeneratedJSON = typeof data.definition === 'string'
+							? data.definition
+							: JSON.stringify(data.definition, null, 2);
+						lastTokens = data.tokens_used || 0;
+						lastCost = data.cost || 0;
 
-							// Show success message
-							showSuccess('Survey generated successfully! Review and edit below.');
-
-							// Scroll to editor
-							document.getElementById('editor-container').scrollIntoView({
-								behavior: 'smooth',
-								block: 'start'
-							});
+						// Parse the survey definition
+						try {
+							lastGeneratedSurvey = typeof data.definition === 'string'
+								? JSON.parse(data.definition)
+								: data.definition;
+						} catch (e) {
+							showError('Failed to parse generated survey: ' + e.message);
+							return;
 						}
+
+						// Show the AI preview modal
+						showAIPreview();
 					})
 					.catch(function(error) {
 						loadingDiv.style.display = 'none';
 						generateBtn.disabled = false;
 						showError(error.message || 'Failed to generate survey. Please try again.');
 					});
+				}
+
+				// Show AI preview modal
+				function showAIPreview() {
+					// Render the survey preview
+					aiPreviewContent.innerHTML = renderSurveyPreview(lastGeneratedSurvey);
+
+					// Show token/cost metadata
+					aiPreviewMetadata.innerHTML =
+						'Tokens used: ' + lastTokens + ' | ' +
+						'Cost: $' + lastCost.toFixed(5);
+
+					// Reset refinement section
+					refinementSection.style.display = 'none';
+					refinementInput.value = '';
+
+					// Show modal
+					aiPreviewModal.style.display = 'block';
+					document.body.style.overflow = 'hidden';
+				}
+
+				// Accept AI survey
+				acceptBtn.addEventListener('click', function() {
+					// Populate Monaco editor
+					if (window.surveyEditor && lastGeneratedJSON) {
+						window.surveyEditor.setValue(lastGeneratedJSON);
+					}
+
+					// Show both intro and editor sections
+					var editorIntroSection = document.getElementById('editor-intro-section');
+					var editorSection = document.getElementById('editor-section');
+					var editorHint = document.getElementById('editor-hint');
+					editorIntroSection.style.display = 'block';
+					editorSection.style.display = 'block';
+					editorHint.style.display = 'block';
+
+					// Close modal
+					closeAIPreview();
+
+					// Scroll to editor
+					setTimeout(function() {
+						document.getElementById('editor-container').scrollIntoView({
+							behavior: 'smooth',
+							block: 'start'
+						});
+					}, 100);
 				});
+
+				// Try again - show refinement section
+				tryAgainBtn.addEventListener('click', function() {
+					refinementSection.style.display = 'block';
+					refinementInput.focus();
+				});
+
+				// Cancel refinement
+				cancelRefinementBtn.addEventListener('click', function() {
+					refinementSection.style.display = 'none';
+					refinementInput.value = '';
+				});
+
+				// Submit refinement
+				submitRefinementBtn.addEventListener('click', function() {
+					var refinement = refinementInput.value.trim();
+					if (!refinement) {
+						alert('Please describe what you would like to change.');
+						return;
+					}
+
+					// Close modal temporarily
+					closeAIPreview();
+
+					// Call API with existing JSON and refinement prompt
+					var refinementPrompt = originalPrompt + '\n\nChanges requested: ' + refinement;
+					callAIGenerate(refinementPrompt, lastGeneratedJSON);
+				});
+
+				// Close AI preview modal
+				closeAiPreviewBtn.addEventListener('click', closeAIPreview);
+				aiPreviewModal.addEventListener('click', function(e) {
+					if (e.target === aiPreviewModal) closeAIPreview();
+				});
+
+				function closeAIPreview() {
+					aiPreviewModal.style.display = 'none';
+					document.body.style.overflow = '';
+				}
 
 				function showError(message) {
 					errorDiv.textContent = message;
@@ -320,6 +536,72 @@ templ CreateSurvey(user *oauth.User, profile *oauth.Profile, posthogKey string) 
 						errorDiv.style.borderColor = '#fcc';
 						errorDiv.style.color = '#c33';
 					}, 5000);
+				}
+
+				// Reuse renderSurveyPreview function (defined later in Monaco script section)
+				function renderSurveyPreview(survey) {
+					var html = '';
+
+					// Anonymous badge
+					if (survey.anonymous) {
+						html += '<div style="background: #e8f4fd; color: #1976d2; padding: 0.5rem 1rem; border-radius: 4px; margin-bottom: 1rem; font-size: 0.9rem;">' +
+							'<strong>Anonymous Survey</strong> - Voter identities will be hidden in results' +
+							'</div>';
+					}
+
+					// Date range if set
+					if (survey.startsAt || survey.endsAt) {
+						html += '<div style="background: #f5f5f5; padding: 0.5rem 1rem; border-radius: 4px; margin-bottom: 1rem; font-size: 0.9rem; color: #666;">';
+						if (survey.startsAt) html += 'Opens: ' + new Date(survey.startsAt).toLocaleString() + '<br>';
+						if (survey.endsAt) html += 'Closes: ' + new Date(survey.endsAt).toLocaleString();
+						html += '</div>';
+					}
+
+					// Questions
+					survey.questions.forEach(function(q, idx) {
+						html += '<div style="margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid #eee;">';
+						html += '<label style="display: block; font-weight: 600; margin-bottom: 0.75rem; font-size: 1.1rem;">';
+						html += (idx + 1) + '. ' + escapeHtml(q.text);
+						if (q.required) {
+							html += ' <span style="color: #e74c3c;">*</span>';
+						}
+						html += '</label>';
+
+						if (q.type === 'single' && q.options) {
+							q.options.forEach(function(opt) {
+								html += '<div style="margin: 0.5rem 0; margin-left: 1rem;">';
+								html += '<label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">';
+								html += '<input type="radio" name="preview_' + q.id + '" disabled style="margin: 0;">';
+								html += '<span>' + escapeHtml(opt.text) + '</span>';
+								html += '</label></div>';
+							});
+						} else if (q.type === 'multi' && q.options) {
+							q.options.forEach(function(opt) {
+								html += '<div style="margin: 0.5rem 0; margin-left: 1rem;">';
+								html += '<label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">';
+								html += '<input type="checkbox" disabled style="margin: 0;">';
+								html += '<span>' + escapeHtml(opt.text) + '</span>';
+								html += '</label></div>';
+							});
+						} else if (q.type === 'text') {
+							html += '<textarea disabled placeholder="Text response..." style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; min-height: 80px; resize: vertical; background: #fafafa;"></textarea>';
+						}
+
+						html += '</div>';
+					});
+
+					// Submit button preview
+					html += '<div style="margin-top: 1rem;">';
+					html += '<button type="button" disabled class="btn" style="width: 100%; opacity: 0.7;">Submit Response</button>';
+					html += '</div>';
+
+					return html;
+				}
+
+				function escapeHtml(text) {
+					var div = document.createElement('div');
+					div.textContent = text;
+					return div.innerHTML;
 				}
 			})();
 		</script>
@@ -376,6 +658,37 @@ templ CreateSurvey(user *oauth.User, profile *oauth.Profile, posthogKey string) 
 				// Store editor reference globally for example loading
 				window.surveyEditor = editor;
 
+				// Check for template data on page load
+				var templateEl = document.getElementById('template-data');
+				if (templateEl) {
+					try {
+						var templateJSON = templateEl.getAttribute('data-template');
+						// Pretty-print the JSON
+						var parsed = JSON.parse(templateJSON);
+						var prettyJSON = JSON.stringify(parsed, null, 2);
+						window.surveyEditor.setValue(prettyJSON);
+
+						// Store template for AI generation - allows users to describe changes
+						window.loadedTemplateJSON = prettyJSON;
+
+						// Show editor sections and hint
+						var editorIntroSection = document.getElementById('editor-intro-section');
+						var editorSection = document.getElementById('editor-section');
+						var editorHint = document.getElementById('editor-hint');
+						editorIntroSection.style.display = 'block';
+						editorSection.style.display = 'block';
+						editorHint.style.display = 'block';
+
+						// Scroll to editor
+						editorIntroSection.scrollIntoView({
+							behavior: 'smooth',
+							block: 'start'
+						});
+					} catch (e) {
+						console.error('Failed to load template:', e);
+					}
+				}
+
 				// Example loading
 				document.getElementById('load-example-btn').addEventListener('click', function() {
 					var select = document.getElementById('example-select');
@@ -384,6 +697,10 @@ templ CreateSurvey(user *oauth.User, profile *oauth.Profile, posthogKey string) 
 
 					if (selected && examples && examples[selected]) {
 						window.surveyEditor.loadExample(selected);
+						// Also store example as template for AI generation
+						window.loadedTemplateJSON = window.surveyEditor.getValue();
+						// Show editor hint since this content can be refined with AI
+						document.getElementById('editor-hint').style.display = 'block';
 					} else if (selected) {
 						alert('Example not found');
 					} else {
