@@ -105,4 +105,8 @@ func SetupRoutes(e *echo.Echo, h *Handlers, hh *HealthHandlers, oh *oauth.Handle
 
 	// Landing page with statistics
 	web.GET("/", h.LandingPage, rateLimiters.GeneralAPI.Middleware())
+
+	// Legal pages
+	web.GET("/privacy", h.PrivacyPage, rateLimiters.GeneralAPI.Middleware())
+	web.GET("/terms", h.TermsPage, rateLimiters.GeneralAPI.Middleware())
 }

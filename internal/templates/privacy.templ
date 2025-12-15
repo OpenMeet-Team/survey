@@ -1,0 +1,153 @@
+package templates
+
+import (
+	"github.com/openmeet-team/survey/internal/oauth"
+)
+
+templ PrivacyPage(user *oauth.User, profile *oauth.Profile, posthogKey string) {
+	@Layout("Privacy Policy", user, profile, posthogKey) {
+		<div class="card">
+			<h1>Privacy Policy</h1>
+			<p style="color: #7f8c8d; margin-bottom: 2rem;"><em>Last updated: December 15, 2024</em></p>
+
+			<h3>1. Purpose</h3>
+			<p>
+				This Privacy Policy outlines how OpenMeet Survey ("the Service") collects, uses, and protects your personal data.
+				Our Service is designed with privacy in mind, leveraging ATProto (the protocol behind Bluesky) to give you control over your data.
+			</p>
+
+			<h3>2. Data Collection</h3>
+			<p>OpenMeet Survey collects different data depending on how you use the Service:</p>
+
+			<h4 style="margin-top: 1rem; color: #3498db;">For ATProto Users (Logged In)</h4>
+			<ul>
+				<li><strong>Identity Data:</strong> Your ATProto DID (Decentralized Identifier) and handle</li>
+				<li><strong>Profile Data:</strong> Display name and avatar (if public on your PDS)</li>
+				<li><strong>Survey Data:</strong> Surveys you create are stored on <em>your</em> Personal Data Server (PDS)</li>
+				<li><strong>Response Data:</strong> Your votes are stored on <em>your</em> PDS and indexed locally</li>
+			</ul>
+
+			<h4 style="margin-top: 1rem; color: #3498db;">For Guest Users (Not Logged In)</h4>
+			<ul>
+				<li><strong>Session Data:</strong> A hashed identifier derived from your IP address and browser information, used solely to prevent duplicate voting</li>
+				<li><strong>Response Data:</strong> Your votes are stored in our database only</li>
+			</ul>
+
+			<h4 style="margin-top: 1rem; color: #3498db;">For All Users</h4>
+			<ul>
+				<li><strong>Usage Data:</strong> Basic analytics about page views and interactions (via PostHog)</li>
+				<li><strong>Device Information:</strong> Browser type and version, used for session identification</li>
+			</ul>
+
+			<h3>3. Data Storage and Ownership</h3>
+			<p>
+				Our Service uniquely leverages ATProto's decentralized architecture:
+			</p>
+			<ul>
+				<li><strong>ATProto Users:</strong> Your surveys and responses are stored on your own PDS. You maintain full ownership and can delete this data at any time through your PDS provider.</li>
+				<li><strong>Guest Users:</strong> Your responses are stored in our PostgreSQL database. We retain this data to maintain accurate vote counts.</li>
+				<li><strong>Local Index:</strong> We maintain an index of surveys and responses to enable search and aggregation. This index can be rebuilt from PDS data.</li>
+			</ul>
+
+			<h3>4. Anonymous Voting</h3>
+			<p>
+				Survey results are <strong>displayed anonymously</strong>. We show aggregate vote counts—never individual voter identities.
+				Even though ATProto responses are technically stored on your PDS, the survey results only display totals, not who voted for what.
+			</p>
+			<p style="margin-top: 0.5rem;">
+				<strong>Note on text responses:</strong> If a survey includes free-text questions, those text responses may be displayed in results.
+				Do not include personal information in text responses unless you intend for it to be visible.
+			</p>
+
+			<h3>5. Use of Data</h3>
+			<p>OpenMeet Survey uses collected data for:</p>
+			<ul>
+				<li>Providing the survey creation and voting functionality</li>
+				<li>Preventing duplicate votes (one vote per user per survey)</li>
+				<li>Displaying aggregate results</li>
+				<li>Improving the Service through anonymized analytics</li>
+			</ul>
+
+			<h3>6. Data Sharing</h3>
+			<ul>
+				<li>We do <strong>not</strong> sell or share your personal data with third parties</li>
+				<li>ATProto data is inherently public on the AT Protocol network (this is how the protocol works)</li>
+				<li>Aggregated, anonymous statistics may be displayed publicly (e.g., total surveys created)</li>
+			</ul>
+
+			<h3>7. Data Control</h3>
+			<p><strong>ATProto Users:</strong></p>
+			<ul>
+				<li>Access your data anytime via the "My Data" page</li>
+				<li>Delete surveys or responses from your PDS at any time</li>
+				<li>Export your data through your PDS provider</li>
+			</ul>
+			<p><strong>Guest Users:</strong></p>
+			<ul>
+				<li>Contact us to request deletion of your vote data</li>
+				<li>Note: We cannot identify individual guest votes without your session information</li>
+			</ul>
+
+			<h3>8. Data Security</h3>
+			<p>OpenMeet Survey implements the following security measures:</p>
+			<ul>
+				<li><strong>Encryption:</strong> All data is transmitted over HTTPS</li>
+				<li><strong>Authentication:</strong> ATProto OAuth with DPoP (Demonstration of Proof-of-Possession) for secure sessions</li>
+				<li><strong>Hashing:</strong> Guest identifiers are hashed and cannot be reversed to identify individuals</li>
+				<li><strong>Access Control:</strong> Database access is restricted to authorized services only</li>
+			</ul>
+
+			<h3>9. Cookies and Tracking</h3>
+			<ul>
+				<li><strong>Session Cookies:</strong> Used to maintain login state for ATProto users</li>
+				<li><strong>Guest Voting Cookies:</strong> Used to prevent duplicate votes</li>
+				<li><strong>Analytics:</strong> We use PostHog for privacy-respecting analytics</li>
+			</ul>
+
+			<h3>10. Third-Party Services</h3>
+			<ul>
+				<li><strong>ATProto PDS Providers:</strong> Your data is stored with your chosen PDS provider (e.g., bsky.social)</li>
+				<li><strong>PostHog:</strong> Privacy-focused analytics platform</li>
+			</ul>
+
+			<h3>11. Children's Privacy</h3>
+			<p>
+				The Service is not intended for children under 13 years of age. We do not knowingly collect personal information from children under 13.
+			</p>
+
+			<h3>12. Updates to This Policy</h3>
+			<p>
+				We may update this Privacy Policy from time to time. Significant changes will be communicated via the Service.
+			</p>
+
+			<h3>13. Contact Information</h3>
+			<p>
+				For questions or concerns about this Privacy Policy, please contact us at
+				<a href="mailto:support@openmeet.net" style="color: #3498db;">support@openmeet.net</a>.
+			</p>
+		</div>
+
+		<style>
+			.card h3 {
+				margin-top: 2rem;
+				margin-bottom: 0.75rem;
+				color: #2c3e50;
+			}
+			.card h4 {
+				margin-bottom: 0.5rem;
+			}
+			.card p {
+				margin-bottom: 1rem;
+				line-height: 1.7;
+			}
+			.card ul {
+				margin-bottom: 1rem;
+				margin-left: 1.5rem;
+			}
+			.card li {
+				margin-bottom: 0.5rem;
+				line-height: 1.6;
+			}
+		</style>
+	}
+}

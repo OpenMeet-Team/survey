@@ -1,0 +1,157 @@
+package templates
+
+import (
+	"github.com/openmeet-team/survey/internal/oauth"
+)
+
+templ TermsPage(user *oauth.User, profile *oauth.Profile, posthogKey string) {
+	@Layout("Terms of Service", user, profile, posthogKey) {
+		<div class="card">
+			<h1>Terms of Service</h1>
+			<p style="color: #7f8c8d; margin-bottom: 2rem;"><em>Last updated: December 15, 2024</em></p>
+
+			<p>Please read these terms and conditions carefully before using the Service.</p>
+
+			<h3>1. Introduction</h3>
+			<p>
+				Welcome to OpenMeet Survey! These Terms of Service govern your use of the OpenMeet Survey platform
+				(the "Service") operated by OpenMeet. By accessing or using the Service, you agree to be bound by these terms.
+				If you do not agree with any part of these terms, please do not use the Service.
+			</p>
+
+			<h3>2. Definitions</h3>
+			<ul>
+				<li><strong>Service</strong> refers to OpenMeet Survey, accessible at survey.openmeet.net</li>
+				<li><strong>User</strong> refers to anyone using the Service, whether logged in with ATProto or as a guest</li>
+				<li><strong>Survey</strong> refers to polls and questionnaires created through the Service</li>
+				<li><strong>Response</strong> refers to votes and answers submitted to surveys</li>
+				<li><strong>ATProto</strong> refers to the AT Protocol, the decentralized social networking protocol used by Bluesky</li>
+				<li><strong>PDS</strong> refers to Personal Data Server, your ATProto data storage</li>
+			</ul>
+
+			<h3>3. Account and Authentication</h3>
+			<ul>
+				<li>You may use the Service without an account (as a guest) or by logging in with your ATProto identity</li>
+				<li>Guest users can create surveys and vote but data is stored only on our servers</li>
+				<li>ATProto users benefit from data portability—surveys and responses are stored on your PDS</li>
+				<li>You are responsible for maintaining the security of your ATProto account</li>
+			</ul>
+
+			<h3>4. Use of the Service</h3>
+			<p>You agree to use the Service in accordance with all applicable laws and these Terms. You may not:</p>
+			<ul>
+				<li>Use the Service for illegal or harmful activities</li>
+				<li>Create surveys containing harassment, hate speech, or illegal content</li>
+				<li>Attempt to manipulate survey results through automated means or vote fraud</li>
+				<li>Circumvent vote-once protections or rate limits</li>
+				<li>Use the Service to collect sensitive personal information without consent</li>
+				<li>Impersonate others or misrepresent your identity</li>
+			</ul>
+
+			<h3>5. User-Generated Content</h3>
+			<ul>
+				<li>You retain ownership of surveys and content you create</li>
+				<li>By creating a survey, you grant the Service permission to display and aggregate responses</li>
+				<li>For ATProto users, surveys are stored on your PDS—you control this data</li>
+				<li>You are responsible for ensuring your content does not violate the rights of others</li>
+				<li>We reserve the right to remove content that violates these terms</li>
+			</ul>
+
+			<h3>6. Survey Responses</h3>
+			<ul>
+				<li>Responses are displayed anonymously—we show vote counts, not voter identities</li>
+				<li>Text responses to free-form questions may be displayed in results</li>
+				<li>ATProto users: responses are stored on your PDS and can be deleted by you</li>
+				<li>Guest users: responses are stored on our servers and contribute to aggregate counts</li>
+			</ul>
+
+			<h3>7. ATProto Integration</h3>
+			<ul>
+				<li>The Service integrates with ATProto for identity and data storage</li>
+				<li>ATProto data is inherently public on the AT Protocol network</li>
+				<li>We use custom lexicons (net.openmeet.survey.*) for survey data</li>
+				<li>Data portability is a feature—your surveys travel with your PDS</li>
+			</ul>
+
+			<h3>8. AI-Generated Content</h3>
+			<p>If you use the AI survey generation feature:</p>
+			<ul>
+				<li>Generated surveys are suggestions and should be reviewed before publishing</li>
+				<li>You are responsible for the final content of surveys you create</li>
+				<li>AI generation is subject to rate limits and usage quotas</li>
+			</ul>
+
+			<h3>9. Service Availability</h3>
+			<ul>
+				<li>The Service is provided "as is" without guarantees of uptime or availability</li>
+				<li>We may modify, suspend, or discontinue features at any time</li>
+				<li>We will make reasonable efforts to notify users of significant changes</li>
+			</ul>
+
+			<h3>10. Intellectual Property</h3>
+			<ul>
+				<li>The Service software, design, and branding are property of OpenMeet</li>
+				<li>Survey content belongs to the creators</li>
+				<li>ATProto and Bluesky are trademarks of their respective owners</li>
+			</ul>
+
+			<h3>11. Termination</h3>
+			<ul>
+				<li>We may suspend or terminate access for violations of these terms</li>
+				<li>You may stop using the Service at any time</li>
+				<li>ATProto users retain their data on their PDS even after stopping use</li>
+			</ul>
+
+			<h3>12. Limitation of Liability</h3>
+			<p>
+				The Service is provided "as is" without warranties of any kind.
+				OpenMeet shall not be liable for any damages arising from your use of the Service,
+				including but not limited to direct, indirect, incidental, punitive, or consequential damages.
+			</p>
+
+			<h3>13. Indemnification</h3>
+			<p>
+				You agree to indemnify and hold OpenMeet harmless from any claims, damages, or losses
+				arising from your use of the Service or violation of these terms.
+			</p>
+
+			<h3>14. Changes to Terms</h3>
+			<p>
+				We may update these terms from time to time. Continued use of the Service after changes
+				constitutes acceptance of the revised terms.
+			</p>
+
+			<h3>15. Governing Law</h3>
+			<p>
+				These terms shall be governed by and construed in accordance with the laws of the
+				jurisdiction in which OpenMeet operates.
+			</p>
+
+			<h3>16. Contact Information</h3>
+			<p>
+				For questions about these terms, please contact us at
+				<a href="mailto:support@openmeet.net" style="color: #3498db;">support@openmeet.net</a>.
+			</p>
+		</div>
+
+		<style>
+			.card h3 {
+				margin-top: 2rem;
+				margin-bottom: 0.75rem;
+				color: #2c3e50;
+			}
+			.card p {
+				margin-bottom: 1rem;
+				line-height: 1.7;
+			}
+			.card ul {
+				margin-bottom: 1rem;
+				margin-left: 1.5rem;
+			}
+			.card li {
+				margin-bottom: 0.5rem;
+				line-height: 1.6;
+			}
+		</style>
+	}
+}

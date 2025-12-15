@@ -984,6 +984,26 @@ func (h *Handlers) LandingPage(c echo.Context) error {
 	return component.Render(c.Request().Context(), c.Response().Writer)
 }
 
+// PrivacyPage displays the privacy policy
+// GET /privacy
+func (h *Handlers) PrivacyPage(c echo.Context) error {
+	user, profile := getUserAndProfile(c)
+
+	c.Response().Header().Set(echo.HeaderContentType, echo.MIMETextHTMLCharsetUTF8)
+	component := templates.PrivacyPage(user, profile, h.posthogKey)
+	return component.Render(c.Request().Context(), c.Response().Writer)
+}
+
+// TermsPage displays the terms of service
+// GET /terms
+func (h *Handlers) TermsPage(c echo.Context) error {
+	user, profile := getUserAndProfile(c)
+
+	c.Response().Header().Set(echo.HeaderContentType, echo.MIMETextHTMLCharsetUTF8)
+	component := templates.TermsPage(user, profile, h.posthogKey)
+	return component.Render(c.Request().Context(), c.Response().Writer)
+}
+
 // MyDataHTML displays the overview of user's PDS data
 // GET /my-data
 func (h *Handlers) MyDataHTML(c echo.Context) error {
