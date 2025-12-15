@@ -1,0 +1,137 @@
+package templates
+
+import (
+	"github.com/openmeet-team/survey/internal/models"
+)
+
+// ShareLinks renders a shareable link section with copy-to-clipboard functionality
+// For ATProto surveys (with URI), it shows both the short URL and AT URI
+// For guest surveys, it only shows the short URL
+templ ShareLinks(survey *models.Survey) {
+	<div class="share-section" style="margin-top: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+		<div style="font-weight: 600; margin-bottom: 0.75rem; color: #2c3e50;">
+			Share this survey
+		</div>
+
+		<!-- Short URL (always shown) -->
+		<div class="share-link-row" style="margin-bottom: 0.5rem;">
+			<label style="font-size: 0.85rem; color: #7f8c8d; display: block; margin-bottom: 0.25rem;">
+				Link
+			</label>
+			<div style="display: flex; gap: 0.5rem; align-items: center;">
+				<input
+					type="text"
+					readonly
+					class="share-url-input"
+					data-url-type="short"
+					data-slug={ survey.Slug }
+					style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; font-size: 0.9rem; background: white;"
+				/>
+				<button
+					type="button"
+					class="copy-btn"
+					data-target="short"
+					style="padding: 0.5rem 1rem; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap;"
+				>
+					Copy
+				</button>
+			</div>
+		</div>
+
+		<!-- AT URI (only shown for ATProto surveys) -->
+		if survey.URI != nil && *survey.URI != "" {
+			<div class="share-link-row" style="margin-top: 0.75rem;">
+				<label style="font-size: 0.85rem; color: #7f8c8d; display: block; margin-bottom: 0.25rem;">
+					ATProto URI
+					<span style="font-size: 0.8rem; color: #95a5a6;">(for Bluesky apps)</span>
+				</label>
+				<div style="display: flex; gap: 0.5rem; align-items: center;">
+					<input
+						type="text"
+						readonly
+						value={ *survey.URI }
+						class="share-url-input aturi-input"
+						style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; font-size: 0.85rem; background: white; color: #7f8c8d;"
+					/>
+					<button
+						type="button"
+						class="copy-btn"
+						data-target="aturi"
+						style="padding: 0.5rem 1rem; background: #95a5a6; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap;"
+					>
+						Copy
+					</button>
+				</div>
+			</div>
+		}
+	</div>
+
+	<script>
+		(function() {
+			// Set the short URL value using window.location.origin
+			document.querySelectorAll('.share-url-input[data-url-type="short"]').forEach(function(input) {
+				var slug = input.getAttribute('data-slug');
+				input.value = window.location.origin + '/s/' + slug;
+			});
+
+			// Copy button handlers
+			document.querySelectorAll('.copy-btn').forEach(function(btn) {
+				btn.addEventListener('click', function() {
+					var target = this.getAttribute('data-target');
+					var input;
+					if (target === 'short') {
+						input = this.parentElement.querySelector('.share-url-input[data-url-type="short"]');
+					} else if (target === 'aturi') {
+						input = this.parentElement.querySelector('.aturi-input');
+					}
+
+					if (input) {
+						navigator.clipboard.writeText(input.value).then(function() {
+							// Visual feedback
+							var originalText = btn.textContent;
+							btn.textContent = 'Copied!';
+							btn.style.background = '#27ae60';
+							setTimeout(function() {
+								btn.textContent = originalText;
+								btn.style.background = target === 'aturi' ? '#95a5a6' : '#3498db';
+							}, 1500);
+						}).catch(function(err) {
+							// Fallback for older browsers
+							input.select();
+							document.execCommand('copy');
+							btn.textContent = 'Copied!';
+							setTimeout(function() {
+								btn.textContent = 'Copy';
+							}, 1500);
+						});
+					}
+				});
+			});
+		})();
+	</script>
+
+	<style>
+		.share-url-input:focus {
+			outline: none;
+			border-color: #3498db;
+		}
+		.copy-btn:hover {
+			opacity: 0.9;
+		}
+		.copy-btn:active {
+			transform: scale(0.98);
+		}
+		@media (max-width: 480px) {
+			.share-link-row > div {
+				flex-direction: column;
+			}
+			.share-url-input {
+				width: 100% !important;
+			}
+			.copy-btn {
+				width: 100%;
+				margin-top: 0.25rem;
+			}
+		}
+	</style>
+}
