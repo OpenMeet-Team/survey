@@ -59,6 +59,7 @@ type GenerationLoggerInterface interface {
 type Handlers struct {
 	queries        QueriesInterface
 	oauthStorage   *oauth.Storage
+	oauthConfig    *oauth.Config // OAuth config (needed for token refresh)
 	supportURL     string
 	posthogKey     string
 	generator      GeneratorInterface
@@ -76,10 +77,11 @@ func NewHandlers(q QueriesInterface) *Handlers {
 }
 
 // NewHandlersWithOAuth creates a new Handlers instance with OAuth support
-func NewHandlersWithOAuth(q QueriesInterface, oauthStorage *oauth.Storage) *Handlers {
+func NewHandlersWithOAuth(q QueriesInterface, oauthStorage *oauth.Storage, oauthConfig *oauth.Config) *Handlers {
 	return &Handlers{
 		queries:      q,
 		oauthStorage: oauthStorage,
+		oauthConfig:  oauthConfig,
 		supportURL:   "",
 	}
 }
@@ -103,6 +105,19 @@ func (h *Handlers) SetGenerator(gen GeneratorInterface, rl RateLimiterInterface)
 // SetLogger sets the generation logger for AI survey generation
 func (h *Handlers) SetLogger(logger GenerationLoggerInterface) {
 	h.generationLog = logger
+}
+
+// ensureValidToken checks if the session's access token is valid and refreshes if needed.
+// Returns error if refresh is needed but fails (caller should invalidate session).
+// Returns nil if OAuth is not configured (config is nil).
+func (h *Handlers) ensureValidToken(ctx context.Context, session *oauth.OAuthSession) error {
+	// If OAuth config is not set, skip token refresh
+	if h.oauthConfig == nil {
+		return nil
+	}
+
+	// Call the oauth package's EnsureValidToken function
+	return oauth.EnsureValidToken(ctx, session, h.oauthStorage, *h.oauthConfig)
 }
 
 // CreateSurvey creates a new survey
@@ -490,38 +505,46 @@ func (h *Handlers) CreateSurveyHTML(c echo.Context) error {
 	if h.oauthStorage != nil {
 		session, err := oauth.GetSession(c, h.oauthStorage)
 		if err == nil && session != nil && session.AccessToken != "" && session.PDSUrl != "" {
-			// User is logged in - write to PDS first
-			rkey := oauth.GenerateTID()
-
-			// Build AT URI before PDS write (so we can store it locally)
-			atURI := fmt.Sprintf("at://%s/net.openmeet.survey/%s", session.DID, rkey)
-			uri = &atURI
-			authorDID = &session.DID
-
-			// Build ATProto record matching lexicon format
-			record := map[string]interface{}{
-				"$type":     "net.openmeet.survey",
-				"name":      title,
-				"questions": def.Questions,
-				"createdAt": time.Now().Format(time.RFC3339),
-			}
-
-			// Add optional fields if present
-			if def.Anonymous {
-				record["anonymous"] = def.Anonymous
-			}
-
-			// Write to PDS
-			pdsURI, pdsCID, err := oauth.CreateRecord(session, "net.openmeet.survey", rkey, record)
-			if err != nil {
-				// PDS write failed - log but continue with local-only survey
-				c.Logger().Errorf("Failed to write survey to PDS: %v", err)
-				uri = nil
-				authorDID = nil
+			// User is logged in - ensure token is valid before PDS write
+			if err := h.ensureValidToken(c.Request().Context(), session); err != nil {
+				// Token refresh failed - log and continue with local-only survey
+				c.Logger().Errorf("Failed to refresh access token: %v", err)
+				// Optionally: delete the invalid session
+				// h.oauthStorage.DeleteSession(c.Request().Context(), session.ID)
 			} else {
-				// PDS write succeeded - update with actual CID
-				uri = &pdsURI
-				cid = &pdsCID
+				// Token is valid - write to PDS
+				rkey := oauth.GenerateTID()
+
+				// Build AT URI before PDS write (so we can store it locally)
+				atURI := fmt.Sprintf("at://%s/net.openmeet.survey/%s", session.DID, rkey)
+				uri = &atURI
+				authorDID = &session.DID
+
+				// Build ATProto record matching lexicon format
+				record := map[string]interface{}{
+					"$type":     "net.openmeet.survey",
+					"name":      title,
+					"questions": def.Questions,
+					"createdAt": time.Now().Format(time.RFC3339),
+				}
+
+				// Add optional fields if present
+				if def.Anonymous {
+					record["anonymous"] = def.Anonymous
+				}
+
+				// Write to PDS
+				pdsURI, pdsCID, err := oauth.CreateRecord(session, "net.openmeet.survey", rkey, record)
+				if err != nil {
+					// PDS write failed - log but continue with local-only survey
+					c.Logger().Errorf("Failed to write survey to PDS: %v", err)
+					uri = nil
+					authorDID = nil
+				} else {
+					// PDS write succeeded - update with actual CID
+					uri = &pdsURI
+					cid = &pdsCID
+				}
 			}
 		}
 	}
@@ -614,52 +637,58 @@ func (h *Handlers) SubmitResponseHTML(c echo.Context) error {
 		session, err := oauth.GetSession(c, h.oauthStorage)
 		c.Logger().Infof("OAuth session lookup: session=%v, err=%v", session != nil, err)
 		if err == nil && session != nil {
-			c.Logger().Infof("Attempting PDS write for user %s to survey %s", session.DID, *survey.URI)
-			// Generate TID for response rkey
-			rkey := oauth.GenerateTID()
-			atURI := fmt.Sprintf("at://%s/net.openmeet.survey.response/%s", session.DID, rkey)
-			uri = &atURI
-			voterDID = &session.DID
-
-			// Convert answers map to lexicon format
-			// The lexicon expects an array of {questionId, selectedOptions?, text?}
-			lexiconAnswers := make([]map[string]interface{}, 0, len(answers))
-			for qid, answer := range answers {
-				lexAnswer := map[string]interface{}{
-					"questionId": qid,
-				}
-				if len(answer.SelectedOptions) > 0 {
-					lexAnswer["selectedOptions"] = answer.SelectedOptions
-				}
-				if answer.Text != "" {
-					lexAnswer["text"] = answer.Text
-				}
-				lexiconAnswers = append(lexiconAnswers, lexAnswer)
-			}
-
-			// Build ATProto record matching lexicon format
-			record := map[string]interface{}{
-				"$type": "net.openmeet.survey.response",
-				"subject": map[string]string{
-					"uri": *survey.URI,
-					"cid": *survey.CID,
-				},
-				"answers":   lexiconAnswers,
-				"createdAt": time.Now().Format(time.RFC3339),
-			}
-
-			// Write to PDS
-			pdsURI, pdsCID, err := oauth.CreateRecord(session, "net.openmeet.survey.response", rkey, record)
-			if err != nil {
-				// PDS write failed - log but continue with local-only response
-				c.Logger().Errorf("Failed to write response to PDS: %v", err)
-				uri = nil
-				voterDID = nil
+			// Ensure token is valid before PDS write
+			if err := h.ensureValidToken(c.Request().Context(), session); err != nil {
+				// Token refresh failed - log and continue with local-only response
+				c.Logger().Errorf("Failed to refresh access token: %v", err)
 			} else {
-				// PDS write succeeded - update with actual CID
-				c.Logger().Infof("PDS write succeeded: uri=%s, cid=%s", pdsURI, pdsCID)
-				uri = &pdsURI
-				cid = &pdsCID
+				c.Logger().Infof("Attempting PDS write for user %s to survey %s", session.DID, *survey.URI)
+				// Generate TID for response rkey
+				rkey := oauth.GenerateTID()
+				atURI := fmt.Sprintf("at://%s/net.openmeet.survey.response/%s", session.DID, rkey)
+				uri = &atURI
+				voterDID = &session.DID
+
+				// Convert answers map to lexicon format
+				// The lexicon expects an array of {questionId, selectedOptions?, text?}
+				lexiconAnswers := make([]map[string]interface{}, 0, len(answers))
+				for qid, answer := range answers {
+					lexAnswer := map[string]interface{}{
+						"questionId": qid,
+					}
+					if len(answer.SelectedOptions) > 0 {
+						lexAnswer["selectedOptions"] = answer.SelectedOptions
+					}
+					if answer.Text != "" {
+						lexAnswer["text"] = answer.Text
+					}
+					lexiconAnswers = append(lexiconAnswers, lexAnswer)
+				}
+
+				// Build ATProto record matching lexicon format
+				record := map[string]interface{}{
+					"$type": "net.openmeet.survey.response",
+					"subject": map[string]string{
+						"uri": *survey.URI,
+						"cid": *survey.CID,
+					},
+					"answers":   lexiconAnswers,
+					"createdAt": time.Now().Format(time.RFC3339),
+				}
+
+				// Write to PDS
+				pdsURI, pdsCID, err := oauth.CreateRecord(session, "net.openmeet.survey.response", rkey, record)
+				if err != nil {
+					// PDS write failed - log but continue with local-only response
+					c.Logger().Errorf("Failed to write response to PDS: %v", err)
+					uri = nil
+					voterDID = nil
+				} else {
+					// PDS write succeeded - update with actual CID
+					c.Logger().Infof("PDS write succeeded: uri=%s, cid=%s", pdsURI, pdsCID)
+					uri = &pdsURI
+					cid = &pdsCID
+				}
 			}
 		}
 	}
@@ -858,6 +887,18 @@ func (h *Handlers) PublishResultsHTML(c echo.Context) error {
 
 	// Generate TID for results rkey
 	rkey := oauth.GenerateTID()
+
+	// Ensure token is valid before PDS write
+	if err := h.ensureValidToken(c.Request().Context(), session); err != nil {
+		c.Logger().Errorf("Failed to refresh access token: %v", err)
+		// Delete invalid session and clear cookie
+		if h.oauthStorage != nil {
+			_ = h.oauthStorage.DeleteSession(c.Request().Context(), session.ID)
+		}
+		c.SetCookie(&http.Cookie{Name: "session", Value: "", MaxAge: -1, Path: "/"})
+		component := templates.Error("Session expired. Please log in again.")
+		return component.Render(c.Request().Context(), c.Response().Writer)
+	}
 
 	// Write to PDS
 	resultsURI, resultsCID, err := oauth.CreateRecord(session, "net.openmeet.survey.results", rkey, record)
@@ -1157,6 +1198,17 @@ func (h *Handlers) UpdateRecordHTML(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Invalid JSON: "+err.Error())
 	}
 
+	// Ensure token is valid before PDS operation
+	if err := h.ensureValidToken(c.Request().Context(), session); err != nil {
+		c.Logger().Errorf("Failed to refresh access token: %v", err)
+		// Delete invalid session and clear cookie
+		if h.oauthStorage != nil {
+			_ = h.oauthStorage.DeleteSession(c.Request().Context(), session.ID)
+		}
+		c.SetCookie(&http.Cookie{Name: "session", Value: "", MaxAge: -1, Path: "/"})
+		return c.String(http.StatusUnauthorized, "Session expired. Please log in again.")
+	}
+
 	// Update record on PDS
 	_, _, err = oauth.UpdateRecord(session, collection, rkey, recordData)
 	if err != nil {
@@ -1237,6 +1289,17 @@ func (h *Handlers) DeleteRecordsHTML(c echo.Context) error {
 
 	if len(rkeys) == 0 {
 		return c.String(http.StatusBadRequest, "No records selected")
+	}
+
+	// Ensure token is valid before PDS operations
+	if err := h.ensureValidToken(c.Request().Context(), session); err != nil {
+		c.Logger().Errorf("Failed to refresh access token: %v", err)
+		// Delete invalid session and clear cookie
+		if h.oauthStorage != nil {
+			_ = h.oauthStorage.DeleteSession(c.Request().Context(), session.ID)
+		}
+		c.SetCookie(&http.Cookie{Name: "session", Value: "", MaxAge: -1, Path: "/"})
+		return c.String(http.StatusUnauthorized, "Session expired. Please log in again.")
 	}
 
 	// Delete each record

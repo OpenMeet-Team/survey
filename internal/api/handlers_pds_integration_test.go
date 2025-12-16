@@ -115,8 +115,8 @@ func TestCreateSurveyHTML_PDSWrite_Integration(t *testing.T) {
 	queries := db.NewQueries(dbConn)
 	oauthStorage := oauth.NewStorage(dbConn)
 
-	// Create handlers with OAuth support
-	h := NewHandlersWithOAuth(queries, oauthStorage)
+	// Create handlers with OAuth support (nil config for test)
+	h := NewHandlersWithOAuth(queries, oauthStorage, nil)
 
 	// Create mock PDS server
 	mockPDS := newMockPDSServer()
@@ -228,7 +228,7 @@ func TestSubmitResponseHTML_PDSWrite_Integration(t *testing.T) {
 	queries := db.NewQueries(dbConn)
 	oauthStorage := oauth.NewStorage(dbConn)
 
-	h := NewHandlersWithOAuth(queries, oauthStorage)
+	h := NewHandlersWithOAuth(queries, oauthStorage, nil)
 
 	// Create mock PDS server
 	mockPDS := newMockPDSServer()

@@ -94,8 +94,29 @@ func main() {
 	// Create generation logger
 	generationLogger := generator.NewGenerationLogger(queries)
 
-	// Create handlers with OAuth storage and optional AI generator
-	handlers := api.NewHandlersWithOAuth(queries, oauthStorage)
+	// Create OAuth config (optional - requires OAUTH_SECRET_JWK_B64 and SERVER_HOST env vars)
+	var oauthConfig *oauth.Config
+	var oauthHandlers *oauth.Handlers
+	secretJWKB64 := os.Getenv("OAUTH_SECRET_JWK_B64")
+	host := os.Getenv("SERVER_HOST")
+	if secretJWKB64 != "" && host != "" {
+		// Decode base64 JWK
+		secretJWKBytes, err := base64.StdEncoding.DecodeString(secretJWKB64)
+		if err != nil {
+			log.Fatalf("Failed to decode OAUTH_SECRET_JWK_B64: %v", err)
+		}
+		oauthConfig = &oauth.Config{
+			Host:      host,
+			SecretJWK: string(secretJWKBytes),
+		}
+		oauthHandlers = oauth.NewHandlers(database, *oauthConfig)
+		log.Println("OAuth handlers initialized")
+	} else {
+		log.Println("OAuth disabled (OAUTH_SECRET_JWK_B64 and SERVER_HOST not configured)")
+	}
+
+	// Create handlers with OAuth storage, config, and optional AI generator
+	handlers := api.NewHandlersWithOAuth(queries, oauthStorage, oauthConfig)
 	if surveyGenerator != nil && generatorRateLimiter != nil {
 		handlers.SetGenerator(surveyGenerator, generatorRateLimiter)
 		handlers.SetLogger(generationLogger)
@@ -112,26 +133,6 @@ func main() {
 	if posthogKey := os.Getenv("POSTHOG_API_KEY"); posthogKey != "" {
 		handlers.SetPostHogKey(posthogKey)
 		log.Printf("PostHog analytics enabled")
-	}
-
-	// Create OAuth handlers (optional - requires OAUTH_SECRET_JWK_B64 and SERVER_HOST env vars)
-	var oauthHandlers *oauth.Handlers
-	secretJWKB64 := os.Getenv("OAUTH_SECRET_JWK_B64")
-	host := os.Getenv("SERVER_HOST")
-	if secretJWKB64 != "" && host != "" {
-		// Decode base64 JWK
-		secretJWKBytes, err := base64.StdEncoding.DecodeString(secretJWKB64)
-		if err != nil {
-			log.Fatalf("Failed to decode OAUTH_SECRET_JWK_B64: %v", err)
-		}
-		oauthConfig := oauth.Config{
-			Host:      host,
-			SecretJWK: string(secretJWKBytes),
-		}
-		oauthHandlers = oauth.NewHandlers(database, oauthConfig)
-		log.Println("OAuth handlers initialized")
-	} else {
-		log.Println("OAuth disabled (OAUTH_SECRET_JWK_B64 and SERVER_HOST not configured)")
 	}
 
 	// Setup routes (includes metrics and request ID middleware)

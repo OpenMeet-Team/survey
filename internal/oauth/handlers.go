@@ -342,6 +342,7 @@ func (h *Handlers) Callback(c echo.Context) error {
 		DPoPKey:        oauthReq.DPoPPrivateKey,
 		PDSUrl:         pdsURL,
 		TokenExpiresAt: tokenExpiresAt,
+		Issuer:         iss, // Store issuer for token refresh
 		ExpiresAt:      time.Now().Add(24 * time.Hour), // Session cookie expiry
 	}
 

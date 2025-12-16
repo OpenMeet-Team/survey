@@ -28,6 +28,7 @@ type OAuthSession struct {
 	DPoPKey        string     // DPoP private key (JWK format)
 	PDSUrl         string     // User's PDS URL for direct writes
 	TokenExpiresAt *time.Time // When the access token expires
+	Issuer         string     // Auth server URL (needed for token refresh)
 	CreatedAt      time.Time
 	ExpiresAt      time.Time
 }
@@ -108,8 +109,8 @@ func (s *Storage) DeleteOAuthRequest(ctx context.Context, state string) error {
 // CreateSession creates a new OAuth session
 func (s *Storage) CreateSession(ctx context.Context, session OAuthSession) error {
 	query := `
-		INSERT INTO oauth_sessions (id, did, access_token, refresh_token, dpop_key, pds_url, token_expires_at, expires_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO oauth_sessions (id, did, access_token, refresh_token, dpop_key, pds_url, token_expires_at, issuer, expires_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 
 	_, err := s.db.ExecContext(
@@ -122,6 +123,7 @@ func (s *Storage) CreateSession(ctx context.Context, session OAuthSession) error
 		session.DPoPKey,
 		session.PDSUrl,
 		session.TokenExpiresAt,
+		session.Issuer,
 		session.ExpiresAt,
 	)
 
@@ -135,7 +137,7 @@ func (s *Storage) CreateSession(ctx context.Context, session OAuthSession) error
 // GetSessionByID retrieves a session by its ID
 func (s *Storage) GetSessionByID(ctx context.Context, id string) (*OAuthSession, error) {
 	query := `
-		SELECT id, did, access_token, refresh_token, dpop_key, pds_url, token_expires_at, created_at, expires_at
+		SELECT id, did, access_token, refresh_token, dpop_key, pds_url, token_expires_at, issuer, created_at, expires_at
 		FROM oauth_sessions
 		WHERE id = $1
 	`
@@ -149,6 +151,7 @@ func (s *Storage) GetSessionByID(ctx context.Context, id string) (*OAuthSession,
 		&session.DPoPKey,
 		&session.PDSUrl,
 		&session.TokenExpiresAt,
+		&session.Issuer,
 		&session.CreatedAt,
 		&session.ExpiresAt,
 	)
