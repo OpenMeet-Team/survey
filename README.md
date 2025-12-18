@@ -130,14 +130,14 @@ If the API key is not set, the `/api/v1/surveys/generate` endpoint will return `
 
 ### Rate Limits
 
-The service implements per-replica in-memory rate limiting:
+The service implements per-replica in-memory rate limiting (configurable via environment variables):
 
-| User Type | Limit | Notes |
-|-----------|-------|-------|
-| Anonymous (by IP) | 2 per hour | Conservative limit to prevent abuse |
-| Authenticated (by DID) | 10 per day | Generous limit for legitimate users |
+| User Type | Default | Env Vars |
+|-----------|---------|----------|
+| Anonymous (by IP) | 5 per hour | `AI_RATE_LIMIT_ANON_LIMIT`, `AI_RATE_LIMIT_ANON_WINDOW_HOURS` |
+| Authenticated (by DID) | 20 per day | `AI_RATE_LIMIT_AUTH_LIMIT`, `AI_RATE_LIMIT_AUTH_WINDOW_HOURS` |
 
-**Multi-replica behavior**: With N replicas, effective limits are N× the configured values (e.g., 3 replicas = 6/hr effective for anonymous). This is acceptable for MVP - cost limits are the primary protection.
+**Multi-replica behavior**: With N replicas, effective limits are N× the configured values. This is acceptable for MVP - cost limits are the primary protection.
 
 ### Cost Controls
 
