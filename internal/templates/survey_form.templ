@@ -2,18 +2,26 @@ package templates
 
 import (
 	"fmt"
+	"strings"
 	"github.com/openmeet-team/survey/internal/models"
 	"github.com/openmeet-team/survey/internal/oauth"
 )
 
 func surveyOGMeta(survey *models.Survey) *OGMeta {
 	og := &OGMeta{
-		Title: survey.Title,
+		Title: survey.Title + " - Share Your Opinion on OpenMeet Survey",
 		Type:  "website",
 	}
+
+	// Set description with fallback (optimal length 110-160 chars)
+	og.Description = "Participate in this survey and share your thoughts. Your feedback helps shape better decisions and outcomes for the community."
 	if survey.Description != nil {
-		og.Description = *survey.Description
+		trimmed := strings.TrimSpace(*survey.Description)
+		if trimmed != "" {
+			og.Description = trimmed
+		}
 	}
+
 	return og
 }
 
