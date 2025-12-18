@@ -6,8 +6,19 @@ import (
 	"github.com/openmeet-team/survey/internal/oauth"
 )
 
+func surveyOGMeta(survey *models.Survey) *OGMeta {
+	og := &OGMeta{
+		Title: survey.Title,
+		Type:  "website",
+	}
+	if survey.Description != nil {
+		og.Description = *survey.Description
+	}
+	return og
+}
+
 templ SurveyForm(survey *models.Survey, user *oauth.User, profile *oauth.Profile, posthogKey string) {
-	@Layout(survey.Title, user, profile, posthogKey) {
+	@LayoutWithOG(survey.Title, user, profile, posthogKey, surveyOGMeta(survey)) {
 		<div class="card">
 			<h1>{ survey.Title }</h1>
 			if survey.Description != nil {

@@ -6,12 +6,42 @@ import (
 )
 
 templ Layout(title string, user *oauth.User, profile *oauth.Profile, posthogKey string) {
+	@LayoutWithOG(title, user, profile, posthogKey, nil) {
+		{ children... }
+	}
+}
+
+templ LayoutWithOG(title string, user *oauth.User, profile *oauth.Profile, posthogKey string, og *OGMeta) {
 	<!DOCTYPE html>
 	<html lang="en">
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 		<title>{ title } - OpenMeet Survey</title>
+		<!-- Open Graph meta tags -->
+		if og != nil && og.Title != "" {
+			<meta property="og:title" content={ og.Title }/>
+		} else {
+			<meta property="og:title" content={ title + " - OpenMeet Survey" }/>
+		}
+		if og != nil && og.Description != "" {
+			<meta property="og:description" content={ og.Description }/>
+			<meta name="description" content={ og.Description }/>
+		}
+		if og != nil && og.URL != "" {
+			<meta property="og:url" content={ og.URL }/>
+		}
+		if og != nil && og.Image != "" {
+			<meta property="og:image" content={ og.Image }/>
+		} else {
+			<meta property="og:image" content="/static/og-image.png"/>
+		}
+		if og != nil && og.Type != "" {
+			<meta property="og:type" content={ og.Type }/>
+		} else {
+			<meta property="og:type" content="website"/>
+		}
+		<meta name="twitter:card" content="summary_large_image"/>
 		<script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
 		if posthogKey != "" {
 			<script type="text/javascript">

@@ -618,7 +618,7 @@ templ CreateSurvey(user *oauth.User, profile *oauth.Profile, posthogKey string, 
 				// Monaco is now available globally as 'monaco'
 				// Load our survey editor script
 				var script = document.createElement('script');
-				script.src = '/static/survey-editor.js';
+				script.src = '/assets/survey-editor.js';
 				script.onload = function() {
 					initSurveyEditor();
 				};
