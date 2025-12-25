@@ -17,6 +17,9 @@ templ LayoutWithOG(title string, user *oauth.User, profile *oauth.Profile, posth
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		if NoIndex {
+			<meta name="robots" content="noindex, nofollow"/>
+		}
 		<title>{ title } - OpenMeet Survey</title>
 		<!-- Open Graph meta tags -->
 		if og != nil && og.Title != "" {

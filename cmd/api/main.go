@@ -18,6 +18,7 @@ import (
 	"github.com/openmeet-team/survey/internal/generator"
 	"github.com/openmeet-team/survey/internal/oauth"
 	"github.com/openmeet-team/survey/internal/telemetry"
+	"github.com/openmeet-team/survey/internal/templates"
 	"github.com/tmc/langchaingo/llms/openai"
 )
 
@@ -137,6 +138,14 @@ func main() {
 	if posthogKey := os.Getenv("POSTHOG_API_KEY"); posthogKey != "" {
 		handlers.SetPostHogKey(posthogKey)
 		log.Printf("PostHog analytics enabled")
+	}
+
+	// Configure noindex meta tag (default: block indexing, set NOINDEX=false to allow)
+	if noindex := os.Getenv("NOINDEX"); noindex == "false" {
+		templates.SetNoIndex(false)
+		log.Println("Search engine indexing enabled (NOINDEX=false)")
+	} else {
+		log.Println("Search engine indexing blocked (noindex meta tag enabled)")
 	}
 
 	// Setup routes (includes metrics and request ID middleware)
