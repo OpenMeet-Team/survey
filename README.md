@@ -39,12 +39,17 @@ A standalone survey/polling service with ATProto integration.
 ### Database Setup
 
 ```bash
+# Install golang-migrate (one time)
+go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
 # Create database
 createdb survey
 
-# Run migrations
-psql survey < internal/db/migrations/001_initial.up.sql
+# Run all migrations
+make migrate
 ```
+
+The project uses [golang-migrate](https://github.com/golang-migrate/migrate) for database migrations. See the Makefile for additional targets: `migrate-down`, `migrate-version`, `migrate-create`.
 
 ### Configuration
 
