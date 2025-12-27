@@ -60,7 +60,7 @@ templ CreateSurvey(user *oauth.User, profile *oauth.Profile, posthogKey string, 
 				</div>
 
 				<div style="margin: 1rem 0;">
-					<label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+					<label for="ai-consent" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
 						<input type="checkbox" id="ai-consent" style="cursor: pointer;"/>
 						<span style="font-size: 0.9rem;">I consent to sending my description to OpenAI for processing</span>
 					</label>
@@ -136,7 +136,7 @@ templ CreateSurvey(user *oauth.User, profile *oauth.Profile, posthogKey string, 
 
 				<!-- Example Selector -->
 				<div style="margin-bottom: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 4px;">
-					<label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
+					<label for="example-select" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">
 						Load an Example
 					</label>
 					<p style="color: #7f8c8d; font-size: 0.9rem; margin: 0 0 0.75rem 0;">
