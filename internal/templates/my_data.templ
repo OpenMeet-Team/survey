@@ -59,7 +59,7 @@ templ MyDataCollectionPage(user *oauth.User, profile *oauth.Profile, collection 
 						<thead>
 							<tr style="border-bottom: 2px solid #ddd;">
 								<th style="padding: 0.5rem; text-align: left; width: 50px;">
-									<input type="checkbox" id="select-all-checkbox" onchange="selectAll()"/>
+									<input type="checkbox" id="select-all-checkbox" aria-label="Select all records" onchange="selectAll()"/>
 								</th>
 								<th style="padding: 0.5rem; text-align: left;">RKey</th>
 								<th style="padding: 0.5rem; text-align: left;">Record</th>
@@ -70,7 +70,7 @@ templ MyDataCollectionPage(user *oauth.User, profile *oauth.Profile, collection 
 							for _, record := range records {
 								<tr style="border-bottom: 1px solid #eee;">
 									<td style="padding: 0.5rem;">
-										<input type="checkbox" name="rkeys" value={ record.RKey }/>
+										<input type="checkbox" name="rkeys" value={ record.RKey } aria-label={ fmt.Sprintf("Select record %s", record.RKey) }/>
 									</td>
 									<td style="padding: 0.5rem;">
 										<code>{ record.RKey }</code>

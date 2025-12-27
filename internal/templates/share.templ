@@ -15,12 +15,13 @@ templ ShareLinks(survey *models.Survey) {
 
 		<!-- Short URL (always shown) -->
 		<div class="share-link-row" style="margin-bottom: 0.5rem;">
-			<label style="font-size: 0.85rem; color: #7f8c8d; display: block; margin-bottom: 0.25rem;">
+			<label for="share-url-short" style="font-size: 0.85rem; color: #7f8c8d; display: block; margin-bottom: 0.25rem;">
 				Link
 			</label>
 			<div style="display: flex; gap: 0.5rem; align-items: center;">
 				<input
 					type="text"
+					id="share-url-short"
 					readonly
 					class="share-url-input"
 					data-url-type="short"
@@ -41,13 +42,14 @@ templ ShareLinks(survey *models.Survey) {
 		<!-- AT URI (only shown for ATProto surveys) -->
 		if survey.URI != nil && *survey.URI != "" {
 			<div class="share-link-row" style="margin-top: 0.75rem;">
-				<label style="font-size: 0.85rem; color: #7f8c8d; display: block; margin-bottom: 0.25rem;">
+				<label for="share-url-aturi" style="font-size: 0.85rem; color: #7f8c8d; display: block; margin-bottom: 0.25rem;">
 					ATProto URI
 					<span style="font-size: 0.8rem; color: #95a5a6;">(for Bluesky apps)</span>
 				</label>
 				<div style="display: flex; gap: 0.5rem; align-items: center;">
 					<input
 						type="text"
+						id="share-url-aturi"
 						readonly
 						value={ *survey.URI }
 						class="share-url-input aturi-input"
