@@ -38,19 +38,29 @@ templ SurveyForm(survey *models.Survey, user *oauth.User, profile *oauth.Profile
 			<form id="survey-form" hx-post={ "/surveys/" + survey.Slug + "/responses" } hx-swap="outerHTML" style="margin-top: 2rem;">
 				for i, question := range survey.Definition.Questions {
 					<div style="margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid #ecf0f1;">
-						<label style="display: block; font-weight: 600; margin-bottom: 1rem; font-size: 1.1rem;">
-							{ fmt.Sprintf("%d. %s", i+1, question.Text) }
-							if question.Required {
-								<span style="color: #e74c3c;">*</span>
-							}
-						</label>
+						if question.Type == models.QuestionTypeText {
+							<label for={ question.ID } style="display: block; font-weight: 600; margin-bottom: 1rem; font-size: 1.1rem;">
+								{ fmt.Sprintf("%d. %s", i+1, question.Text) }
+								if question.Required {
+									<span style="color: #e74c3c;">*</span>
+								}
+							</label>
+						} else {
+							<p style="display: block; font-weight: 600; margin-bottom: 1rem; font-size: 1.1rem;">
+								{ fmt.Sprintf("%d. %s", i+1, question.Text) }
+								if question.Required {
+									<span style="color: #e74c3c;">*</span>
+								}
+							</p>
+						}
 
 						if question.Type == models.QuestionTypeSingle {
 							for _, option := range question.Options {
 								<div style="margin-bottom: 0.75rem;">
-									<label style="display: flex; align-items: center; cursor: pointer; padding: 0.5rem; border-radius: 4px; transition: background 0.2s;">
+									<label for={ question.ID + "-" + option.ID } style="display: flex; align-items: center; cursor: pointer; padding: 0.5rem; border-radius: 4px; transition: background 0.2s;">
 										<input
 											type="radio"
+											id={ question.ID + "-" + option.ID }
 											name={ question.ID }
 											value={ option.ID }
 											required?={ question.Required }
@@ -63,9 +73,10 @@ templ SurveyForm(survey *models.Survey, user *oauth.User, profile *oauth.Profile
 						} else if question.Type == models.QuestionTypeMulti {
 							for _, option := range question.Options {
 								<div style="margin-bottom: 0.75rem;">
-									<label style="display: flex; align-items: center; cursor: pointer; padding: 0.5rem; border-radius: 4px; transition: background 0.2s;">
+									<label for={ question.ID + "-" + option.ID } style="display: flex; align-items: center; cursor: pointer; padding: 0.5rem; border-radius: 4px; transition: background 0.2s;">
 										<input
 											type="checkbox"
+											id={ question.ID + "-" + option.ID }
 											name={ question.ID }
 											value={ option.ID }
 											style="margin-right: 0.75rem;"
@@ -76,6 +87,7 @@ templ SurveyForm(survey *models.Survey, user *oauth.User, profile *oauth.Profile
 							}
 						} else if question.Type == models.QuestionTypeText {
 							<textarea
+								id={ question.ID }
 								name={ question.ID }
 								required?={ question.Required }
 								rows="4"
