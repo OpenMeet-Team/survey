@@ -3,6 +3,7 @@ package oauth
 import (
 	"context"
 	"database/sql"
+	"net/http"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -49,6 +50,14 @@ func SessionMiddleware(storage SessionStore) echo.MiddlewareFunc {
 				if err := storage.DeleteSession(c.Request().Context(), cookie.Value); err != nil {
 					c.Logger().Errorf("Failed to delete expired session: %v", err)
 				}
+				// Clear the session cookie from browser
+				c.SetCookie(&http.Cookie{
+					Name:     "session",
+					Value:    "",
+					Path:     "/",
+					MaxAge:   -1,
+					HttpOnly: true,
+				})
 				return next(c)
 			}
 

@@ -136,6 +136,18 @@ func TestSessionMiddleware(t *testing.T) {
 		// Verify session was deleted from database
 		_, err = storage.GetSessionByID(setupCtx.Request().Context(), session.ID)
 		assert.Error(t, err, "Expired session should be deleted from database")
+
+		// Verify session cookie was cleared in response
+		cookies := rec.Result().Cookies()
+		var sessionCookie *http.Cookie
+		for _, cookie := range cookies {
+			if cookie.Name == "session" {
+				sessionCookie = cookie
+				break
+			}
+		}
+		require.NotNil(t, sessionCookie, "Session cookie should be set in response")
+		assert.Equal(t, -1, sessionCookie.MaxAge, "Session cookie MaxAge should be -1 to clear it")
 	})
 }
 
