@@ -1,7 +1,9 @@
 package oauth
 
 import (
+	"context"
 	"database/sql"
+	"net/http"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -12,9 +14,15 @@ type User struct {
 	DID string
 }
 
+// SessionStore defines the session operations needed by the middleware.
+type SessionStore interface {
+	GetSessionByID(ctx context.Context, id string) (*OAuthSession, error)
+	DeleteSession(ctx context.Context, id string) error
+}
+
 // SessionMiddleware creates middleware that reads the session cookie
 // and adds the user to the context if the session is valid
-func SessionMiddleware(storage *Storage) echo.MiddlewareFunc {
+func SessionMiddleware(storage SessionStore) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			// Try to get session cookie
@@ -38,8 +46,18 @@ func SessionMiddleware(storage *Storage) echo.MiddlewareFunc {
 
 			// Check if session is expired
 			if session.ExpiresAt.Before(time.Now()) {
-				// Expired session - continue without user
-				// TODO: Consider cleaning up expired session here
+				// Clean up expired session from database
+				if err := storage.DeleteSession(c.Request().Context(), cookie.Value); err != nil {
+					c.Logger().Errorf("Failed to delete expired session: %v", err)
+				}
+				// Clear the session cookie from browser
+				c.SetCookie(&http.Cookie{
+					Name:     "session",
+					Value:    "",
+					Path:     "/",
+					MaxAge:   -1,
+					HttpOnly: true,
+				})
 				return next(c)
 			}
 

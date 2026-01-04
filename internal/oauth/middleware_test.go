@@ -95,7 +95,7 @@ func TestSessionMiddleware(t *testing.T) {
 		assert.Equal(t, "did:plc:test123", capturedUser.DID)
 	})
 
-	t.Run("expired session - sets nil user in context", func(t *testing.T) {
+	t.Run("expired session - sets nil user in context and deletes session", func(t *testing.T) {
 		// Create an expired session
 		e := echo.New()
 		setupReq := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -103,12 +103,16 @@ func TestSessionMiddleware(t *testing.T) {
 		setupCtx := e.NewContext(setupReq, setupRec)
 
 		session := OAuthSession{
-			ID:        "expired-session",
+			ID:        "expired-session-cleanup",
 			DID:       "did:plc:expired",
 			ExpiresAt: time.Now().Add(-1 * time.Hour),
 		}
 		err := storage.CreateSession(setupCtx.Request().Context(), session)
 		require.NoError(t, err)
+
+		// Verify session exists before middleware call
+		_, err = storage.GetSessionByID(setupCtx.Request().Context(), session.ID)
+		require.NoError(t, err, "Session should exist before middleware call")
 
 		// Make request with expired session cookie
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -128,6 +132,22 @@ func TestSessionMiddleware(t *testing.T) {
 		err = handler(c)
 		require.NoError(t, err)
 		assert.Nil(t, capturedUser)
+
+		// Verify session was deleted from database
+		_, err = storage.GetSessionByID(setupCtx.Request().Context(), session.ID)
+		assert.Error(t, err, "Expired session should be deleted from database")
+
+		// Verify session cookie was cleared in response
+		cookies := rec.Result().Cookies()
+		var sessionCookie *http.Cookie
+		for _, cookie := range cookies {
+			if cookie.Name == "session" {
+				sessionCookie = cookie
+				break
+			}
+		}
+		require.NotNil(t, sessionCookie, "Session cookie should be set in response")
+		assert.Equal(t, -1, sessionCookie.MaxAge, "Session cookie MaxAge should be -1 to clear it")
 	})
 }
 
