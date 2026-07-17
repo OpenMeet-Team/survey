@@ -1,4 +1,7 @@
-name: Deploy Survey to Dev (GitOps)
+# Post AWS->DO migration: main builds/pushes to GHCR and deploys straight to
+# do-prod (the only live cluster — EKS dev/prod are retired). Filename kept to
+# preserve any required-status-check config; see the job below for the real target.
+name: Build & Deploy Survey to Prod (GitOps)
 
 on:
   push:
@@ -52,6 +55,9 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write   # push to ghcr.io/openmeet-team/survey via GITHUB_TOKEN
     outputs:
       image_tag: ${{ steps.set-outputs.outputs.image_tag }}
 
@@ -59,18 +65,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+      # Auth to GHCR. GITHUB_TOKEN works once the package is linked to this repo
+      # (Package settings -> Manage Actions access -> add survey = Write).
+      # To use a PAT instead: set password to ${{ secrets.GHCR_PAT }} and drop the
+      # packages: write permission above.
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-        with:
-          mask-password: true
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set image tag
         id: set-outputs
@@ -78,20 +82,15 @@ jobs:
           echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
           echo "image_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
 
-      - name: Build, tag, and push image to Amazon ECR
+      - name: Build and push image to GHCR
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: openmeet-ecr/survey
-          GIT_REVISION: ${{ github.sha }}
-          GIT_BRANCH: ${{ github.ref_name }}
+          IMAGE: ghcr.io/openmeet-team/survey
         run: |
-          echo "Building image with tag: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-
-          # Tag as latest for main branch
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          set -euo pipefail
+          echo "Building $IMAGE:$IMAGE_TAG"
+          docker build -t "$IMAGE:$IMAGE_TAG" -t "$IMAGE:latest" .
+          docker push "$IMAGE:$IMAGE_TAG"
+          docker push "$IMAGE:latest"
 
   gitops-update:
     needs: [build-and-deploy]
@@ -100,9 +99,8 @@ jobs:
     with:
       service_name: survey
       image_tag: ${{ needs.build-and-deploy.outputs.image_tag }}
-      environment: dev
-      ecr_registry: 433321780850.dkr.ecr.us-east-1.amazonaws.com
-      ecr_repository: openmeet-ecr/survey
-      commit_message: "GitOps: Update Survey to ${{ needs.build-and-deploy.outputs.image_tag }} from main branch"
+      image_name: ghcr.io/openmeet-team/survey
+      environment: do-prod
+      commit_message: "GitOps: deploy survey ${{ needs.build-and-deploy.outputs.image_tag }} to do-prod (main)"
     secrets:
       GH_PAT: ${{ secrets.GH_PAT_INFRASTRUCTURE }}
