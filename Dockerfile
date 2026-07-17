@@ -22,8 +22,12 @@ COPY . .
 # Build frontend assets
 RUN cd web && npm run build
 
-# Install templ and generate template files
-RUN go install github.com/a-h/templ/cmd/templ@latest
+# Install templ and generate template files.
+# Pin the CLI to the go.mod runtime version (github.com/a-h/templ) so it stays
+# buildable on this Go toolchain and `templ generate` matches the runtime.
+# `@latest` drifts ahead (v0.3.1020 requires Go >= 1.25, breaking this builder).
+# Bump in lockstep with go.mod.
+RUN go install github.com/a-h/templ/cmd/templ@v0.3.960
 RUN templ generate
 
 # Build both binaries
