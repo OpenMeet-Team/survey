@@ -32,7 +32,11 @@ jobs:
           cache-dependency-path: web/package-lock.json
 
       - name: Install templ
-        run: go install github.com/a-h/templ/cmd/templ@latest
+        # Pin the CLI to the go.mod runtime version (github.com/a-h/templ) so
+        # `templ generate` emits code the pinned runtime can compile. `@latest`
+        # drifts ahead of the runtime (e.g. templ.ResolveAttributeValue) and
+        # breaks the build. Bump this in lockstep with go.mod.
+        run: go install github.com/a-h/templ/cmd/templ@v0.3.960
 
       - name: Install dependencies
         run: go mod download
