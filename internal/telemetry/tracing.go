@@ -14,12 +14,36 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.28.0"
 )
 
-// InitTracing initializes OpenTelemetry tracing with OTLP HTTP exporter
-// Returns a shutdown function that should be deferred
+// InitTracing initializes OpenTelemetry tracing with OTLP HTTP exporter.
+// Returns a shutdown function that should be deferred.
+//
+// Tracing is opt-in behind two gates, mirroring the Node services
+// (openmeet-api, bsky-event-processor, bsky-firehose-consumer) so the whole
+// fleet has one consistent switch:
+//
+//  1. ENABLE_TRACING must be exactly "true".
+//  2. OTEL_EXPORTER_OTLP_ENDPOINT must be set.
+//
+// Gate 2 previously defaulted to "localhost:4318", which meant unsetting the
+// variable did not disable tracing -- it silently retargeted the exporter at
+// localhost and the batch processor logged export failures forever. Removing
+// the collector left no way to turn this off from config at all.
 func InitTracing(ctx context.Context) (func(context.Context) error, error) {
-	// Get configuration from environment
-	// Default to HTTP OTLP port (4318) - more compatible than gRPC (4317)
-	endpoint := getEnvOrDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4318")
+	// No-op shutdown, returned whenever tracing is disabled. Callers always
+	// defer the result, so it must be safe to call and must not be nil.
+	noop := func(context.Context) error { return nil }
+
+	if os.Getenv("ENABLE_TRACING") != "true" {
+		log.Printf("Tracing disabled (ENABLE_TRACING != \"true\")")
+		return noop, nil
+	}
+
+	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	if endpoint == "" {
+		log.Printf("Tracing disabled (OTEL_EXPORTER_OTLP_ENDPOINT not set)")
+		return noop, nil
+	}
+
 	serviceName := getEnvOrDefault("OTEL_SERVICE_NAME", "survey-api")
 
 	// Strip http:// or https:// scheme if present (HTTP exporter expects host:port only)

@@ -2,7 +2,6 @@ package telemetry
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,105 +9,135 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
-func TestInitTracing_Success(t *testing.T) {
-	// Set up environment
-	os.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4317")
-	os.Setenv("OTEL_SERVICE_NAME", "test-service")
-	defer os.Unsetenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-	defer os.Unsetenv("OTEL_SERVICE_NAME")
+// enableTracing sets both gates so InitTracing takes the live path. t.Setenv
+// restores the previous values when the test ends, so these no longer leak
+// into later tests the way the old os.Setenv/os.Unsetenv pairs did.
+func enableTracing(t *testing.T, endpoint string) {
+	t.Helper()
+	t.Setenv("ENABLE_TRACING", "true")
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", endpoint)
+}
 
-	// Call InitTracing
+// assertTracingDisabled checks the observable signature of "tracing is off":
+// InitTracing returned a usable no-op shutdown without installing a global
+// TracerProvider.
+func assertTracingDisabled(t *testing.T, prev any, shutdown func(context.Context) error, err error) {
+	t.Helper()
+	require.NoError(t, err)
+	require.NotNil(t, shutdown, "shutdown must be non-nil -- callers always defer it")
+	assert.True(t, any(otel.GetTracerProvider()) == prev,
+		"global TracerProvider should be untouched when tracing is disabled")
+	assert.NoError(t, shutdown(context.Background()), "no-op shutdown must be safe to call")
+}
+
+func TestInitTracing_DisabledWhenEnableTracingUnset(t *testing.T) {
+	t.Setenv("ENABLE_TRACING", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4318")
+
+	prev := any(otel.GetTracerProvider())
 	shutdown, err := InitTracing(context.Background())
 
-	// Should not error even if endpoint is unavailable (warning only)
-	assert.NoError(t, err)
-	assert.NotNil(t, shutdown)
+	assertTracingDisabled(t, prev, shutdown, err)
+}
 
-	// Should set global tracer provider
-	tp := otel.GetTracerProvider()
-	assert.NotNil(t, tp)
+func TestInitTracing_DisabledWhenEnableTracingNotTrue(t *testing.T) {
+	// Only the exact string "true" enables tracing -- "1", "yes", "TRUE" do not.
+	for _, v := range []string{"false", "1", "yes", "TRUE"} {
+		t.Run(v, func(t *testing.T) {
+			t.Setenv("ENABLE_TRACING", v)
+			t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4318")
 
-	// Cleanup
-	if shutdown != nil {
-		err := shutdown(context.Background())
-		assert.NoError(t, err)
+			prev := any(otel.GetTracerProvider())
+			shutdown, err := InitTracing(context.Background())
+
+			assertTracingDisabled(t, prev, shutdown, err)
+		})
 	}
 }
 
-func TestInitTracing_DefaultValues(t *testing.T) {
-	// Clear environment variables to test defaults
-	os.Unsetenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-	os.Unsetenv("OTEL_SERVICE_NAME")
+// The regression this change exists for: with ENABLE_TRACING=true but no
+// endpoint, the old code silently fell back to "localhost:4318" and exported
+// into the void forever. Unsetting the variable must actually disable tracing.
+func TestInitTracing_DisabledWhenEndpointUnset(t *testing.T) {
+	t.Setenv("ENABLE_TRACING", "true")
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
 
-	// Call InitTracing
+	prev := any(otel.GetTracerProvider())
 	shutdown, err := InitTracing(context.Background())
 
-	// Should use defaults
-	assert.NoError(t, err)
-	assert.NotNil(t, shutdown)
+	assertTracingDisabled(t, prev, shutdown, err)
+}
 
-	// Cleanup
-	if shutdown != nil {
-		err := shutdown(context.Background())
-		assert.NoError(t, err)
-	}
+func TestInitTracing_Success(t *testing.T) {
+	enableTracing(t, "localhost:4317")
+	t.Setenv("OTEL_SERVICE_NAME", "test-service")
+
+	prev := any(otel.GetTracerProvider())
+	shutdown, err := InitTracing(context.Background())
+
+	// Should not error even if the endpoint is unavailable -- export failures
+	// surface later, in the batch processor, not at init.
+	require.NoError(t, err)
+	require.NotNil(t, shutdown)
+	assert.False(t, any(otel.GetTracerProvider()) == prev,
+		"a global TracerProvider should be installed when both gates pass")
+
+	assert.NoError(t, shutdown(context.Background()))
 }
 
 func TestInitTracing_WithCustomEndpoint(t *testing.T) {
-	// Set custom endpoint
-	os.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "custom-endpoint:4318")
-	os.Setenv("OTEL_SERVICE_NAME", "custom-service")
-	defer os.Unsetenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-	defer os.Unsetenv("OTEL_SERVICE_NAME")
+	enableTracing(t, "custom-endpoint:4318")
+	t.Setenv("OTEL_SERVICE_NAME", "custom-service")
 
-	// Call InitTracing
 	shutdown, err := InitTracing(context.Background())
 
-	// Should not error (endpoint may not exist, but that's OK)
-	assert.NoError(t, err)
-	assert.NotNil(t, shutdown)
+	require.NoError(t, err)
+	require.NotNil(t, shutdown)
+	assert.NoError(t, shutdown(context.Background()))
+}
 
-	// Cleanup
-	if shutdown != nil {
-		err := shutdown(context.Background())
-		assert.NoError(t, err)
-	}
+// The http:// prefix is stripped before reaching the exporter, which expects
+// host:port. This is the form the k8s configmap actually supplied.
+func TestInitTracing_StripsSchemeFromEndpoint(t *testing.T) {
+	enableTracing(t, "http://jaeger.monitoring.svc.cluster.local:4318")
+
+	shutdown, err := InitTracing(context.Background())
+
+	require.NoError(t, err)
+	require.NotNil(t, shutdown)
+	assert.NoError(t, shutdown(context.Background()))
 }
 
 func TestInitTracing_ShutdownIsIdempotent(t *testing.T) {
-	// Initialize tracing
+	enableTracing(t, "localhost:4318")
+
 	shutdown, err := InitTracing(context.Background())
 	require.NoError(t, err)
 	require.NotNil(t, shutdown)
 
-	// Call shutdown multiple times - should not panic or error
-	err = shutdown(context.Background())
-	assert.NoError(t, err)
-
-	err = shutdown(context.Background())
-	assert.NoError(t, err)
+	// Calling shutdown repeatedly should neither panic nor error.
+	assert.NoError(t, shutdown(context.Background()))
+	assert.NoError(t, shutdown(context.Background()))
 }
 
 func TestInitTracing_CreatesSpans(t *testing.T) {
-	// Initialize tracing
+	enableTracing(t, "localhost:4318")
+
 	shutdown, err := InitTracing(context.Background())
 	require.NoError(t, err)
 	require.NotNil(t, shutdown)
 	defer shutdown(context.Background())
 
-	// Get tracer from global provider
 	tracer := otel.Tracer("test-tracer")
-	assert.NotNil(t, tracer)
+	require.NotNil(t, tracer)
 
-	// Create a test span
 	ctx, span := tracer.Start(context.Background(), "test-operation")
-	assert.NotNil(t, span)
+	require.NotNil(t, span)
 
-	// Span should be recording (even if export fails due to no Jaeger)
-	assert.True(t, span.IsRecording(), "Span should be recording")
+	// Recording is independent of whether export succeeds -- there is no
+	// collector listening in tests.
+	assert.True(t, span.IsRecording(), "span should be recording when tracing is enabled")
 
 	span.End()
-
-	// Verify context contains trace info
 	assert.NotNil(t, ctx)
 }
